@@ -3,8 +3,9 @@
 project("renderer")
 
 add_subdirectory("src")
+add_subdirectory("ext")
+
 add_executable(renderer
 	"main.cpp"
 )
-
 target_link_libraries(renderer core)
