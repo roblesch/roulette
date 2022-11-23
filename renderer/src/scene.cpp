@@ -19,6 +19,7 @@ glm::vec3 as_vec3(const pugi::char_t *value)
 
 glm::mat4 as_mat4(const pugi::char_t* value)
 {
+    // note: check out isstringstream
     //double buf[16];
     //std::string str = value;
     //std::string::size_type t;
