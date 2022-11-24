@@ -1,7 +1,8 @@
 ﻿add_library(core
+	"primitive.h"
 	"scene.cpp"
 	"scene.h"
-)
+ )
 target_link_libraries(core
 	glm
 	pugixml
