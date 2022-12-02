@@ -1,68 +1,86 @@
 #include "scene.h"
 
-glm::vec3 as_vec3(const pugi::xml_node rgb)
-{
+float as_float(const pugi::xml_node fl) {
+    return stof((std::string) fl.attribute("value").value());
+}
+
+glm::vec3 as_vec3(const pugi::xml_node rgb) {
     std::istringstream stream(rgb.attribute("value").value());
     std::string token;
     float buf[3];
-    for (float & i : buf)
-    {
+    for (float &i : buf) {
         stream >> token;
         i = stof(token);
     }
     return glm::make_vec3(buf);
 }
 
-glm::mat4 as_mat4(const pugi::xml_node matrix)
-{
+bool is_shape(const pugi::xml_node shape, const std::string &type) {
+    return ((std::string) shape.attribute("type").value()) == type;
+}
+
+glm::mat4 as_mat4(const pugi::xml_node matrix) {
     std::istringstream stream(matrix.attribute("value").value());
     std::string token;
     float buf[16];
-    for (float & i : buf)
-    {
+    for (float &i : buf) {
         stream >> token;
         i = stof(token);
     }
     return glm::make_mat4(buf);
 }
 
-Scene Scene::FromMitsubaXML(const char* filename)
-{
+Scene Scene::FromMitsubaXML(const char *filename) {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(filename);
 
     std::shared_ptr<Camera> cam;
-    std::map<std::string, std::shared_ptr<Material>> mat;
-    std::map<std::string, std::shared_ptr<Primitive>> prim;
+    std::map<std::string, std::shared_ptr<Material>> mats;
+    std::map<std::string, std::shared_ptr<Primitive>> prims;
 
-    if (result.status == pugi::status_ok)
-    {
+    if (result.status == pugi::status_ok) {
         pugi::xml_node scene = doc.child("scene");
         pugi::xml_node camera = scene.child("sensor");
         pugi::xml_object_range<pugi::xml_named_node_iterator> bsdfs = scene.children("bsdf");
         pugi::xml_object_range<pugi::xml_named_node_iterator> shapes = scene.children("shape");
 
-        if (camera)
-        {
-            float fov = stof((std::string) camera.child("float").attribute("value").value());
+        if (camera) {
+            float fov = as_float(camera.child("float"));
             glm::mat4 transform = as_mat4(camera.child("transform").child("matrix"));
             cam = std::make_shared<Camera>(fov, transform);
         }
-        
-        for(pugi::xml_node bsdf : bsdfs)
-        {
-            std::string id = bsdf.attribute("id").value();
-            glm::vec3 rgb = as_vec3(bsdf.child("bsdf").child("rgb"));
-            mat.emplace(id, std::make_shared<Material>(rgb));
+
+        for (pugi::xml_node _bsdf : bsdfs) {
+            std::string matId = _bsdf.attribute("id").value();
+            glm::vec3 rgb = as_vec3(_bsdf.child("bsdf").child("rgb"));
+            mats[matId] = std::make_shared<Diffuse>(rgb);
         }
-        for (pugi::xml_node shape : shapes)
-        {
-            std::string id = shape.attribute("id").value();
-            std::string matId = shape.child("ref").attribute("id").value();
-            glm::mat4 transform = as_mat4(shape.child("transform").child("matrix"));
-            prim.emplace(id, std::make_shared<Primitive>(std::make_shared<Shape>(transform), mat[matId]));
+
+        for (pugi::xml_node _shape : shapes) {
+            std::shared_ptr<Shape> shape;
+            std::shared_ptr<Emissive> emitter;
+
+            std::string shapeId = _shape.attribute("id").value();
+            std::string matId = _shape.child("ref").attribute("id").value();
+            glm::mat4 transform = as_mat4(_shape.child("transform").child("matrix"));
+
+            if (is_shape(_shape, "rectangle")) {
+                shape = std::make_shared<Rectangle>(transform);
+            } else if (is_shape(_shape, "cube")) {
+                shape = std::make_shared<Cube>(transform);
+            }
+
+            if (_shape.child("emitter")) {
+                glm::vec3 radiance = as_vec3(_shape.child("emitter").child("rgb"));
+                emitter = std::make_shared<Emissive>(radiance);
+            }
+
+            prims[shapeId] = std::make_shared<Primitive>(
+                shape,
+                mats[matId],
+                emitter);
         }
     }
 
-    return {cam, mat, prim};
+    return {cam, mats, prims};
 }

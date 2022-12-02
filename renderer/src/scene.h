@@ -12,8 +12,17 @@
 
 #include "primitive.h"
 
-class Camera
-{
+class Ray {
+public:
+    Ray(glm::vec3 o, glm::vec3 d) : o(o), d(glm::normalize(d)), t(0) {};
+    glm::vec3 at(float dt) const { return o + d * dt; }
+
+    glm::vec3 o;
+    glm::vec3 d;
+    float t;
+};
+
+class Camera {
 public:
     Camera(float fov, glm::mat4 transform) : fov(fov), to_world(transform) {};
 
@@ -21,18 +30,18 @@ public:
     glm::mat4 to_world;
 };
 
-class Scene
-{
+class Scene {
 public:
-    Scene(
-        std::shared_ptr<Camera> cam,
-        std::map<std::string, std::shared_ptr<Material>> mat,
-        std::map<std::string, std::shared_ptr<Primitive>> prim
-    ) : camera(std::move(cam)), materialMap(std::move(mat)), primitiveMap(std::move(prim)) {};
+    Scene(std::shared_ptr<Camera> cam,
+          std::map<std::string, std::shared_ptr<Material>> mats,
+          std::map<std::string, std::shared_ptr<Primitive>> prims) :
+        camera(std::move(cam)),
+        materials(std::move(mats)),
+        primitives(std::move(prims)) {};
 
-    static Scene FromMitsubaXML(const char* filename);
+    static Scene FromMitsubaXML(const char *filename);
 
     std::shared_ptr<Camera> camera;
-    std::map<std::string, std::shared_ptr<Material>> materialMap;
-    std::map<std::string, std::shared_ptr<Primitive>> primitiveMap;
+    std::map<std::string, std::shared_ptr<Material>> materials;
+    std::map<std::string, std::shared_ptr<Primitive>> primitives;
 };
