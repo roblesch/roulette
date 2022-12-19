@@ -1,86 +1,96 @@
 #include "scene.h"
 
-float as_float(const pugi::xml_node fl) {
-    return stof((std::string) fl.attribute("value").value());
-}
-
-glm::vec3 as_vec3(const pugi::xml_node rgb) {
-    std::istringstream stream(rgb.attribute("value").value());
-    std::string token;
+vec3 as_vec3(const xml_node rgb_node) {
+    istringstream stream(rgb_node.attribute("value").value());
+    string token;
     float buf[3];
-    for (float &i : buf) {
+    for (float& i : buf) {
         stream >> token;
         i = stof(token);
     }
-    return glm::make_vec3(buf);
+    return make_vec3(buf);
 }
 
-bool is_shape(const pugi::xml_node shape, const std::string &type) {
-    return ((std::string) shape.attribute("type").value()) == type;
-}
-
-glm::mat4 as_mat4(const pugi::xml_node matrix) {
-    std::istringstream stream(matrix.attribute("value").value());
-    std::string token;
+mat4 as_mat4(const xml_node matrix_node) {
+    istringstream stream(matrix_node.attribute("value").value());
+    string token;
     float buf[16];
-    for (float &i : buf) {
+    for (float& i : buf) {
         stream >> token;
         i = stof(token);
     }
-    return glm::make_mat4(buf);
+    return make_mat4(buf);
 }
 
-Scene Scene::FromMitsubaXML(const char *filename) {
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(filename);
+bool is_shape(const xml_node shape_node, const string& type) {
+    return ((string)shape_node.attribute("type").value()) == type;
+}
 
-    std::shared_ptr<Camera> cam;
-    std::map<std::string, std::shared_ptr<Material>> mats;
-    std::map<std::string, std::shared_ptr<Primitive>> prims;
+Scene Scene::FromMitsubaXML(const char* filename) {
+    xml_document doc;
+    xml_parse_result result = doc.load_file(filename);
 
-    if (result.status == pugi::status_ok) {
-        pugi::xml_node scene = doc.child("scene");
-        pugi::xml_node camera = scene.child("sensor");
-        pugi::xml_object_range<pugi::xml_named_node_iterator> bsdfs = scene.children("bsdf");
-        pugi::xml_object_range<pugi::xml_named_node_iterator> shapes = scene.children("shape");
+    shared_ptr<Camera> camera;
+    map<string, shared_ptr<Material>> materials;
+    map<string, shared_ptr<Primitive>> primitives;
 
-        if (camera) {
-            float fov = as_float(camera.child("float"));
-            glm::mat4 transform = as_mat4(camera.child("transform").child("matrix"));
-            cam = std::make_shared<Camera>(fov, transform);
-        }
-
-        for (pugi::xml_node _bsdf : bsdfs) {
-            std::string matId = _bsdf.attribute("id").value();
-            glm::vec3 rgb = as_vec3(_bsdf.child("bsdf").child("rgb"));
-            mats[matId] = std::make_shared<Diffuse>(rgb);
-        }
-
-        for (pugi::xml_node _shape : shapes) {
-            std::shared_ptr<Shape> shape;
-            std::shared_ptr<Emissive> emitter;
-
-            std::string shapeId = _shape.attribute("id").value();
-            std::string matId = _shape.child("ref").attribute("id").value();
-            glm::mat4 transform = as_mat4(_shape.child("transform").child("matrix"));
-
-            if (is_shape(_shape, "rectangle")) {
-                shape = std::make_shared<Rectangle>(transform);
-            } else if (is_shape(_shape, "cube")) {
-                shape = std::make_shared<Cube>(transform);
-            }
-
-            if (_shape.child("emitter")) {
-                glm::vec3 radiance = as_vec3(_shape.child("emitter").child("rgb"));
-                emitter = std::make_shared<Emissive>(radiance);
-            }
-
-            prims[shapeId] = std::make_shared<Primitive>(
-                shape,
-                mats[matId],
-                emitter);
-        }
+    if (result.status != status_ok) {
+        return { camera, materials, primitives };
     }
 
-    return {cam, mats, prims};
+    xml_node scene = doc.child("scene");
+    xml_node sensor = scene.child("sensor");
+    xml_object_range<xml_named_node_iterator> bsdfs = scene.children("bsdf");
+    xml_object_range<xml_named_node_iterator> shapes = scene.children("shape");
+
+    if (sensor) {
+        int width = scene.find_child_by_attribute("default", "name", "resx")
+            .attribute("value").as_int();
+        int height = scene.find_child_by_attribute("default", "name", "resy")
+            .attribute("value").as_int();
+        float fov = sensor.find_child_by_attribute("float", "name", "fov")
+            .attribute("value").as_float();
+        mat4 transform = as_mat4(sensor.child("transform").child("matrix"));
+        camera = make_shared<Camera>(width, height, fov, transform);
+    }
+    
+    for (xml_node _bsdf : bsdfs) {
+        string matId = _bsdf.attribute("id").value();
+        vec3 rgb = as_vec3(_bsdf.child("bsdf").child("rgb"));
+        materials[matId] = make_shared<Diffuse>(rgb);
+    }
+    
+    for (xml_node _shape : shapes) {
+        shared_ptr<Shape> shape;
+        shared_ptr<Emissive> emitter;
+
+        string shapeId = _shape.attribute("id").value();
+        string matId = _shape.child("ref").attribute("id").value();
+        mat4 transform = as_mat4(_shape.child("transform").child("matrix"));
+
+        if (is_shape(_shape, "rectangle")) {
+            shape = make_shared<Rectangle>(transform);
+        }
+        else if (is_shape(_shape, "cube")) {
+            shape = make_shared<Cube>(transform);
+        }
+
+        if (_shape.child("emitter")) {
+            vec3 radiance = as_vec3(_shape.child("emitter").child("rgb"));
+            emitter = make_shared<Emissive>(radiance);
+        }
+
+        primitives[shapeId] = make_shared<Primitive>(
+            shape,
+            materials[matId],
+            emitter);
+    }
+
+    return { camera, materials, primitives };
 }
+
+Scene Scene::FromTungstenJSON(const char* filename) {
+    ifstream f(filename);
+    json data = json::parse(f);
+    return {};
+};

@@ -2,8 +2,9 @@
 	"primitive.h"
 	"scene.cpp"
 	"scene.h"
- )
+	"usings.h")
 target_link_libraries(core
 	glm
+	nlohmann_json
 	pugixml
 )

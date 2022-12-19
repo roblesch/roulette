@@ -8,7 +8,6 @@ if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/glm/CMakeLists.txt")
 		$ git submodule update --init --recursive")
 endif()
 
-
 add_subdirectory("src")
 add_subdirectory("ext")
 

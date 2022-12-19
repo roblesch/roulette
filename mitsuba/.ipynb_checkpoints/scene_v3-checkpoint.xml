@@ -10,7 +10,10 @@
 	<sensor type="perspective">
 		<float name="fov" value="19.5" />
 		<transform name="to_world">
-			<matrix value="-1 0 0 0 0 1 0 1 0 0 -1 6.8 0 0 0 1" />
+			<matrix value="-1 0 0 0
+			                0 1 0 1
+			                0 0 -1 6.8
+			                0 0 0 1" />
 		</transform>
 		<sampler type="independent">
 			<integer name="sample_count" value="$spp" />
