@@ -1,42 +1,50 @@
 #include "scene.h"
 
-vec3 as_vec3(const xml_node rgb_node) {
-    istringstream stream(rgb_node.attribute("value").value());
+#include <iostream>
+
+vec3 as_vec3(xml_node node) {
+    istringstream stream(node.attribute("value").value());
     string token;
     float buf[3];
-    for (float& i : buf) {
+    for (float &i: buf) {
         stream >> token;
         i = stof(token);
     }
-    return make_vec3(buf);
+    return glm::make_vec3(buf);
 }
 
-mat4 as_mat4(const xml_node matrix_node) {
-    istringstream stream(matrix_node.attribute("value").value());
+vec3 as_vec3(value_type value) {
+    return glm::make_vec3(value.get<vector<float>>().data());
+}
+
+mat4 as_mat4(xml_node node) {
+    istringstream stream(node.attribute("value").value());
     string token;
     float buf[16];
-    for (float& i : buf) {
+    for (float &i: buf) {
         stream >> token;
         i = stof(token);
     }
-    return make_mat4(buf);
+    return glm::make_mat4(buf);
 }
 
-bool is_shape(const xml_node shape_node, const string& type) {
-    return ((string)shape_node.attribute("type").value()) == type;
+bool is_shape(const xml_node shape_node, const string &type) {
+    return ((string) shape_node.attribute("type").value()) == type;
 }
 
-Scene Scene::FromMitsubaXML(const char* filename) {
+Scene Scene::FromMitsubaXML(const char *filename) {
     xml_document doc;
     xml_parse_result result = doc.load_file(filename);
 
-    shared_ptr<Camera> camera;
+    if (result.status != pugi::status_ok) {
+        return {};
+    }
+
+    Camera camera;
+    Integrator integrator;
     map<string, shared_ptr<Material>> materials;
     map<string, shared_ptr<Primitive>> primitives;
-
-    if (result.status != status_ok) {
-        return { camera, materials, primitives };
-    }
+    map < string, shared_ptr<Primitive>> lights;
 
     xml_node scene = doc.child("scene");
     xml_node sensor = scene.child("sensor");
@@ -45,24 +53,24 @@ Scene Scene::FromMitsubaXML(const char* filename) {
 
     if (sensor) {
         int width = scene.find_child_by_attribute("default", "name", "resx")
-            .attribute("value").as_int();
+                .attribute("value").as_int();
         int height = scene.find_child_by_attribute("default", "name", "resy")
-            .attribute("value").as_int();
+                .attribute("value").as_int();
         float fov = sensor.find_child_by_attribute("float", "name", "fov")
-            .attribute("value").as_float();
+                .attribute("value").as_float();
         mat4 transform = as_mat4(sensor.child("transform").child("matrix"));
-        camera = make_shared<Camera>(width, height, fov, transform);
+        camera = Camera(width, height, fov, transform);
     }
-    
-    for (xml_node _bsdf : bsdfs) {
+
+    for (xml_node _bsdf: bsdfs) {
         string matId = _bsdf.attribute("id").value();
         vec3 rgb = as_vec3(_bsdf.child("bsdf").child("rgb"));
-        materials[matId] = make_shared<Diffuse>(rgb);
+        materials[matId] = make_shared<Lambertian>(rgb);
     }
-    
-    for (xml_node _shape : shapes) {
+
+    for (xml_node _shape: shapes) {
         shared_ptr<Shape> shape;
-        shared_ptr<Emissive> emitter;
+        shared_ptr<Emitter> emitter;
 
         string shapeId = _shape.attribute("id").value();
         string matId = _shape.child("ref").attribute("id").value();
@@ -70,27 +78,105 @@ Scene Scene::FromMitsubaXML(const char* filename) {
 
         if (is_shape(_shape, "rectangle")) {
             shape = make_shared<Rectangle>(transform);
-        }
-        else if (is_shape(_shape, "cube")) {
+        } else if (is_shape(_shape, "cube")) {
             shape = make_shared<Cube>(transform);
         }
 
+        primitives[shapeId] = make_shared<Primitive>(
+                shape,
+                materials[matId],
+                emitter);
+
         if (_shape.child("emitter")) {
             vec3 radiance = as_vec3(_shape.child("emitter").child("rgb"));
-            emitter = make_shared<Emissive>(radiance);
+            emitter = make_shared<Emitter>(radiance);
+            primitives[shapeId]->emitter = emitter;
+            lights[shapeId] = primitives[shapeId];
         }
-
-        primitives[shapeId] = make_shared<Primitive>(
-            shape,
-            materials[matId],
-            emitter);
     }
 
-    return { camera, materials, primitives };
+    return { camera, integrator, materials, primitives, lights };
 }
 
-Scene Scene::FromTungstenJSON(const char* filename) {
+Scene Scene::FromTungstenJSON(const char *filename) {
     ifstream f(filename);
     json data = json::parse(f);
-    return {};
+
+    if (data.empty()) {
+        return {};
+    }
+
+    Camera camera;
+    Integrator integrator;
+    map<string, shared_ptr<Material>> materials;
+    map<string, shared_ptr<Primitive>> primitives;
+    map<string, shared_ptr<Primitive>> lights;
+    
+    for (value_type _bsdf : data["bsdfs"]) {
+        string name = _bsdf["name"];
+        if (_bsdf["type"] == "lambert") {
+            vec3 albedo = as_vec3(_bsdf["albedo"]);
+            materials[name] = make_shared<Lambertian>(albedo);
+        }
+        else if (_bsdf["type"] == "null") {
+            vec3 albedo = vec3(_bsdf["albedo"]);
+            materials[name] = make_shared<Lambertian>(albedo);
+        }
+    }
+
+    for (value_type _prim : data["primitives"]) {
+        shared_ptr<Shape> shape;
+        shared_ptr<Emitter> emit;
+
+        string name = _prim["bsdf"];
+        value_type tsf = _prim["transform"];
+
+        vec3 pos = tsf.contains("position") ?
+            as_vec3(tsf["position"]) :
+            vec3(0);
+        vec3 scale = tsf.contains("scale") ?
+            as_vec3(tsf["scale"]) :
+            vec3(1);
+        vec3 rot = tsf.contains("rotation") ?
+            as_vec3(tsf["rotation"]) :
+            vec3(0);
+
+        if (_prim["type"] == "quad") {
+            shape = make_shared<Rectangle>(pos, scale, rot);
+        }
+        else if (_prim["type"] == "cube") {
+            shape = make_shared<Cube>(pos, scale, rot);
+        }
+
+        primitives[name] = make_shared<Primitive>(
+            shape,
+            materials[name],
+            emit);
+
+        if (_prim.contains("emission")) {
+            vec3 radiance = as_vec3(_prim["emission"]);
+            emit = make_shared<Emitter>(radiance);
+            primitives[name]->emitter = emit;
+            lights[name] = primitives[name];
+        }
+    }
+
+    if (data.contains("camera")) {
+        int resx = data["camera"]["resolution"][0];
+        int resy = data["camera"]["resolution"][1];
+        float fovx = data["camera"]["fov"];
+        vec3 eye = as_vec3(data["camera"]["transform"]["position"]);
+        vec3 cent = as_vec3(data["camera"]["transform"]["look_at"]);
+        vec3 up = as_vec3(data["camera"]["transform"]["up"]);
+        camera = Camera(resx, resy, fovx, eye, cent, up);
+    }
+
+    if (data.contains("integrator")) {
+        if (data["integrator"]["type"] == "path_tracer") {
+            //integrator = PathIntegrator();
+            integrator = DebugIntegrator();
+        }
+    }
+
+    return { camera, integrator, materials, primitives, lights };
 };

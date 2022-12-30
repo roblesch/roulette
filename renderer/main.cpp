@@ -5,10 +5,11 @@
 using namespace std;
 
 int main() {
+    Renderer renderer;
 #ifdef _WIN32
-    Scene scene = Scene::FromMitsubaXML("C:/Users/Christian/source/repos/roulette/renderer/scene_v3.xml");
+    renderer.loadTungstenJSON("C:/Users/Christian/source/repos/roulette/renderer/scene.json");
 #elif __APPLE__
-    Scene scene = Scene::FromMitsubaXML("/Users/roblesch/Projects/roulette/renderer/scene_v3.xml");
+    Renderer.loadTungstenJSON("/Users/roblesch/Projects/roulette/renderer/scene.json");
 #endif
     cout << "Hello CMake." << endl;
     return 0;

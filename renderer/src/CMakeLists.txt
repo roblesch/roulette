@@ -1,7 +1,10 @@
 ﻿add_library(core
+    "camera.h"
 	"primitive.h"
-	"scene.cpp"
+	"integrator.h"
+	"integrator.cpp"
 	"scene.h"
+	"scene.cpp"
 	"usings.h")
 target_link_libraries(core
 	glm
