@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-vec3 as_vec3(xml_node node) {
-    istringstream stream(node.attribute("value").value());
+vec3f as_vec3(xml_node node) {
+    std::istringstream stream(node.attribute("value").value());
     string token;
     float buf[3];
     for (float &i: buf) {
@@ -13,12 +13,12 @@ vec3 as_vec3(xml_node node) {
     return glm::make_vec3(buf);
 }
 
-vec3 as_vec3(value_type value) {
+vec3f as_vec3(value_type value) {
     return glm::make_vec3(value.get<vector<float>>().data());
 }
 
-mat4 as_mat4(xml_node node) {
-    istringstream stream(node.attribute("value").value());
+mat4f as_mat4(xml_node node) {
+    std::istringstream stream(node.attribute("value").value());
     string token;
     float buf[16];
     for (float &i: buf) {
@@ -41,7 +41,7 @@ Scene Scene::FromMitsubaXML(const char *filename) {
     }
 
     Camera camera;
-    Integrator integrator;
+    unique_ptr<Integrator> integrator;
     map<string, shared_ptr<Material>> materials;
     map<string, shared_ptr<Primitive>> primitives;
     map < string, shared_ptr<Primitive>> lights;
@@ -58,13 +58,13 @@ Scene Scene::FromMitsubaXML(const char *filename) {
                 .attribute("value").as_int();
         float fov = sensor.find_child_by_attribute("float", "name", "fov")
                 .attribute("value").as_float();
-        mat4 transform = as_mat4(sensor.child("transform").child("matrix"));
+        mat4f transform = as_mat4(sensor.child("transform").child("matrix"));
         camera = Camera(width, height, fov, transform);
     }
 
     for (xml_node _bsdf: bsdfs) {
         string matId = _bsdf.attribute("id").value();
-        vec3 rgb = as_vec3(_bsdf.child("bsdf").child("rgb"));
+        vec3f rgb = as_vec3(_bsdf.child("bsdf").child("rgb"));
         materials[matId] = make_shared<Lambertian>(rgb);
     }
 
@@ -74,7 +74,7 @@ Scene Scene::FromMitsubaXML(const char *filename) {
 
         string shapeId = _shape.attribute("id").value();
         string matId = _shape.child("ref").attribute("id").value();
-        mat4 transform = as_mat4(_shape.child("transform").child("matrix"));
+        mat4f transform = as_mat4(_shape.child("transform").child("matrix"));
 
         if (is_shape(_shape, "rectangle")) {
             shape = make_shared<Rectangle>(transform);
@@ -88,18 +88,20 @@ Scene Scene::FromMitsubaXML(const char *filename) {
                 emitter);
 
         if (_shape.child("emitter")) {
-            vec3 radiance = as_vec3(_shape.child("emitter").child("rgb"));
+            vec3f radiance = as_vec3(_shape.child("emitter").child("rgb"));
             emitter = make_shared<Emitter>(radiance);
             primitives[shapeId]->emitter = emitter;
             lights[shapeId] = primitives[shapeId];
         }
     }
 
+    integrator = make_unique<DebugIntegrator>();
+
     return { camera, integrator, materials, primitives, lights };
 }
 
 Scene Scene::FromTungstenJSON(const char *filename) {
-    ifstream f(filename);
+    std::ifstream f(filename);
     json data = json::parse(f);
 
     if (data.empty()) {
@@ -107,7 +109,7 @@ Scene Scene::FromTungstenJSON(const char *filename) {
     }
 
     Camera camera;
-    Integrator integrator;
+    unique_ptr<Integrator> integrator;
     map<string, shared_ptr<Material>> materials;
     map<string, shared_ptr<Primitive>> primitives;
     map<string, shared_ptr<Primitive>> lights;
@@ -115,11 +117,11 @@ Scene Scene::FromTungstenJSON(const char *filename) {
     for (value_type _bsdf : data["bsdfs"]) {
         string name = _bsdf["name"];
         if (_bsdf["type"] == "lambert") {
-            vec3 albedo = as_vec3(_bsdf["albedo"]);
+            vec3f albedo = as_vec3(_bsdf["albedo"]);
             materials[name] = make_shared<Lambertian>(albedo);
         }
         else if (_bsdf["type"] == "null") {
-            vec3 albedo = vec3(_bsdf["albedo"]);
+            vec3f albedo = vec3f(_bsdf["albedo"]);
             materials[name] = make_shared<Lambertian>(albedo);
         }
     }
@@ -131,15 +133,15 @@ Scene Scene::FromTungstenJSON(const char *filename) {
         string name = _prim["bsdf"];
         value_type tsf = _prim["transform"];
 
-        vec3 pos = tsf.contains("position") ?
+        vec3f pos = tsf.contains("position") ?
             as_vec3(tsf["position"]) :
-            vec3(0);
-        vec3 scale = tsf.contains("scale") ?
+            vec3f(0);
+        vec3f scale = tsf.contains("scale") ?
             as_vec3(tsf["scale"]) :
-            vec3(1);
-        vec3 rot = tsf.contains("rotation") ?
+            vec3f(1);
+        vec3f rot = tsf.contains("rotation") ?
             as_vec3(tsf["rotation"]) :
-            vec3(0);
+            vec3f(0);
 
         if (_prim["type"] == "quad") {
             shape = make_shared<Rectangle>(pos, scale, rot);
@@ -154,7 +156,7 @@ Scene Scene::FromTungstenJSON(const char *filename) {
             emit);
 
         if (_prim.contains("emission")) {
-            vec3 radiance = as_vec3(_prim["emission"]);
+            vec3f radiance = as_vec3(_prim["emission"]);
             emit = make_shared<Emitter>(radiance);
             primitives[name]->emitter = emit;
             lights[name] = primitives[name];
@@ -165,16 +167,16 @@ Scene Scene::FromTungstenJSON(const char *filename) {
         int resx = data["camera"]["resolution"][0];
         int resy = data["camera"]["resolution"][1];
         float fovx = data["camera"]["fov"];
-        vec3 eye = as_vec3(data["camera"]["transform"]["position"]);
-        vec3 cent = as_vec3(data["camera"]["transform"]["look_at"]);
-        vec3 up = as_vec3(data["camera"]["transform"]["up"]);
+        vec3f eye = as_vec3(data["camera"]["transform"]["position"]);
+        vec3f cent = as_vec3(data["camera"]["transform"]["look_at"]);
+        vec3f up = as_vec3(data["camera"]["transform"]["up"]);
         camera = Camera(resx, resy, fovx, eye, cent, up);
     }
 
     if (data.contains("integrator")) {
         if (data["integrator"]["type"] == "path_tracer") {
             //integrator = PathIntegrator();
-            integrator = DebugIntegrator();
+            integrator = make_unique<DebugIntegrator>();
         }
     }
 

@@ -6,17 +6,18 @@
 #include "integrator.h"
 #include "primitive.h"
 
+class Integrator;
+
 class Scene {
 public:
     Scene() {};
-
     Scene(Camera cam,
-          Integrator integ,
+          unique_ptr<Integrator> &integ,
           map<string, shared_ptr<Material>> mats,
           map<string, shared_ptr<Primitive>> prims,
           map<string, shared_ptr<Primitive>> lights) :
         camera(cam),
-        integrator(integ),
+        integrator(std::move(integ)),
         materials(std::move(mats)),
         primitives(std::move(prims)),
         lights(std::move(lights)) {};
@@ -25,7 +26,7 @@ public:
     static Scene FromTungstenJSON(const char* filename);
 
     Camera camera;
-    Integrator integrator;
+    unique_ptr<Integrator> integrator;
     map<string, shared_ptr<Material>> materials;
     map<string, shared_ptr<Primitive>> primitives;
     map<string, shared_ptr<Primitive>> lights;
@@ -37,14 +38,27 @@ public:
     FrameBuffer(int resx, int resy) :
         resx(resx),
         resy(resy),
-        buf(new vec3[resx * resy]) {};
+        buf(vector<vec3f>(resx*resy)) {};
 
-    void set(pixel px, vec3 v) { buf[px.y * resx + px.x] = v; }
-    vec3 get(pixel px) { return buf[px.y * resx + px.x]; }
+    void set(pixel px, vec3f v) { buf[px.y * resx + px.x] = v; }
+    vec3f get(pixel px) { return buf[px.y * resx + px.x]; }
+
+    void toFile(const char* filename) {
+        std::ofstream out(filename);
+        out << "P3\n" << resx << ' ' << resy << "\n255\n";
+        for (int j = 0; j < resy; j++) {
+            for (int i = 0; i < resx; i++) {
+                vec3f px = get(pixel(i,j));
+                out << static_cast<int>(256 * clamp(px.r)) << ' '
+                    << static_cast<int>(256 * clamp(px.g)) << ' '
+                    << static_cast<int>(256 * clamp(px.b)) << '\n';
+            }
+        }
+    }
 
     int resx;
     int resy;
-    vec3* buf;
+    vector<vec3f> buf;
 };
 
 class Renderer {
@@ -64,7 +78,8 @@ public:
     }
 
     void render() {
-        scene.integrator.render(scene, frame);
+        scene.integrator->render(scene, frame);
+        frame.toFile("out.ppm");
     }
 
     Scene scene;

@@ -1,63 +1,62 @@
 #pragma once
 
 #include "usings.h"
-#include "scene.h"
 
 class Ray {
 public:
-    Ray(const vec3 &o, const vec3 &d) :
+    Ray(const vec3f &o, const vec3f &d) :
         o(o),
         d(normalize(d)),
         t(0) {};
-    vec3 at(float dt) const { return o + d * dt; }
+    vec3f at(float dt) const { return o + d * dt; }
 
-    vec3 o;
-    vec3 d;
+    vec3f o;
+    vec3f d;
     float t;
 };
 
 class Material {
 public:
     virtual ~Material() {};
-    vec3 albedo;
+    vec3f albedo;
 };
 
 class Lambertian : public Material {
 public:
-    explicit Lambertian(const vec3 &albedo) {
+    explicit Lambertian(const vec3f &albedo) {
         this->albedo = albedo;
     };
 };
 
 class Emitter {
 public:
-    explicit Emitter(const vec3 &radiance) : radiance(radiance) {};
-    vec3 radiance;
+    explicit Emitter(const vec3f &radiance) : radiance(radiance) {};
+    vec3f radiance;
 };
 
 class Shape {
 public:
-    explicit Shape(const mat4 &to_world) :
-        pos(vec3()),
-        scale(vec3()),
-        rot3(vec3()),
-        rot4(mat4()),
-        invRot(mat4()),
+    explicit Shape(const mat4f &to_world) :
+        pos(vec3f()),
+        scale(vec3f()),
+        rot3(vec3f()),
+        rot4(mat4f()),
+        invRot(mat4f()),
         to_world(to_world),
         to_obj(inverse(to_world)) {};
-    Shape(const vec3 &pos,
-          const vec3 &scale,
-          const vec3 &rot3) :
+    Shape(const vec3f &pos,
+          const vec3f &scale,
+          const vec3f &rot3) :
         pos(pos),
         scale(scale),
         rot3(rot3) {
         
-        mat4 T(1), R(1);
+        mat4f T(1), R(1);
         T = glm::translate(T, pos);
         T = glm::scale(T, scale);
-        R = glm::rotate(R, rot3.x, vec3(1, 0, 0));
-        R = glm::rotate(R, rot3.y, vec3(0, 1, 0));
-        R = glm::rotate(R, rot3.z, vec3(0, 0, 1));
+        R = glm::rotate(R, rot3.x, vec3f(1, 0, 0));
+        R = glm::rotate(R, rot3.y, vec3f(0, 1, 0));
+        R = glm::rotate(R, rot3.z, vec3f(0, 0, 1));
         T = T * R;
 
         rot4 = R;
@@ -66,38 +65,38 @@ public:
         to_obj = glm::inverse(T);
     };
 
-    vec3 pos;
-    vec3 scale;
-    vec3 rot3;
-    mat4 rot4;
-    mat4 invRot;
-    mat4 to_world;
-    mat4 to_obj;
+    vec3f pos;
+    vec3f scale;
+    vec3f rot3;
+    mat4f rot4;
+    mat4f invRot;
+    mat4f to_world;
+    mat4f to_obj;
 };
 
 class Rectangle : public Shape {
 public:
-    explicit Rectangle(const mat4 &transform) : Shape(transform) {};
-    Rectangle(const vec3 &pos,
-              const vec3 &scale,
-              const vec3 &rot3) :
+    explicit Rectangle(const mat4f &transform) : Shape(transform) {};
+    Rectangle(const vec3f &pos,
+              const vec3f &scale,
+              const vec3f &rot3) :
         Shape(pos, scale, rot3) {};
 
-    vec3 a{-1, -1, 0};
-    vec3 b{1, 1, 0};
-    vec3 normal{0, 0, 1};
+    vec3f a{-1, -1, 0};
+    vec3f b{1, 1, 0};
+    vec3f normal{0, 0, 1};
 };
 
 class Cube : public Shape {
 public:
-    explicit Cube(const mat4 &transform) : Shape(transform) {};
-    Cube(const vec3 &pos,
-         const vec3 &scale,
-         const vec3 &rot3) :
+    explicit Cube(const mat4f &transform) : Shape(transform) {};
+    Cube(const vec3f &pos,
+         const vec3f &scale,
+         const vec3f &rot3) :
         Shape(pos, scale, rot3) {};
 
-    vec3 a{-1, -1, -1};
-    vec3 b{1, 1, 1};
+    vec3f a{-1, -1, -1};
+    vec3f b{1, 1, 1};
 };
 
 class Primitive {

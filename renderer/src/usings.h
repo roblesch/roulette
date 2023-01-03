@@ -12,8 +12,6 @@
 #include <nlohmann/json.hpp>
 #include "pugixml.hpp"
 
-using std::ifstream;
-using std::istringstream;
 using std::map;
 using std::shared_ptr;
 using std::string;
@@ -21,13 +19,12 @@ using std::unique_ptr;
 using std::vector;
 using std::make_shared;
 using std::make_unique;
-using std::dynamic_pointer_cast;
 
-using glm::vec3;
-using glm::vec4;
-using glm::mat4;
+using vec3b = glm::u8vec3;
+using vec3f = glm::f32vec3;
+using vec4f = glm::f32vec4;
+using mat4f = glm::f32mat4;
 using pixel = glm::u16vec2;
-using color = vec3;
 
 using nlohmann::json;
 using value_type = json::value_type;
@@ -51,10 +48,12 @@ const float INV_FOUR_PI = 0.25f * INV_PI;
 const float SQRT_PI = 1.77245385091f;
 const float INV_SQRT_PI = 1.0f / SQRT_PI;
 
+inline float clamp(float f) { return f < 0.0f ? 0.0f : (f > 1.0f ? 1.0f : f); }
 inline float d_to_r(float d) { return d * (PI / 180.0f); }
 inline float r_to_d(float r) { return r * (180.0f / PI); }
-inline vec3 transformVec(const mat4& m, const vec3& v) {
-    return vec3(
+
+inline vec3f transformVec(const mat4f& m, const vec3f& v) {
+    return vec3f(
         m[0][0]*v.x + m[0][1]*v.y + m[0][2]*v.z,
         m[1][0]*v.x + m[1][1]*v.y + m[1][2]*v.z,
         m[2][0]*v.x + m[2][1]*v.y + m[2][2]*v.z

@@ -11,6 +11,8 @@ int main() {
 #elif __APPLE__
     Renderer.loadTungstenJSON("/Users/roblesch/Projects/roulette/renderer/scene.json");
 #endif
+    renderer.render();
+    system("out.ppm");
     cout << "Hello CMake." << endl;
     return 0;
 }

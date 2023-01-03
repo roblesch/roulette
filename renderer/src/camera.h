@@ -8,7 +8,7 @@ public:
     Camera(int resx,
         int resy,
         float fovd,
-        const mat4& transform) :
+        const mat4f& transform) :
         resx(resx),
         resy(resy),
         aspect((float)resy / (float)resx),
@@ -24,9 +24,9 @@ public:
     Camera(int resx,
         int resy,
         float fovd,
-        const vec3& eye,
-        const vec3& center,
-        const vec3& up) :
+        const vec3f& eye,
+        const vec3f& center,
+        const vec3f& up) :
         resx(resx),
         resy(resy),
         aspect((float)resy / (float)resx),
@@ -40,18 +40,18 @@ public:
         up(up),
         transform(lookAt(eye, center - eye, up)) {};
 
-    vec3 sampleDirection(pixel px) {
-        return transformVec(transform, vec3(
+    vec3f sampleDirection(pixel px) {
+        return normalize(transformVec(transform, vec3f(
             -1.0f + 2.0f * (float(px.x) / float(resx)),
             aspect - 2.0f * aspect * (float(px.y) / float(resy)),
-            toPlane));
+            toPlane)));
     }
 
-    static mat4 lookAt(const vec3& pos, const vec3& fwd, const vec3& up) {
-        vec3 f = glm::normalize(fwd);
-        vec3 r = glm::normalize(glm::cross(f, up));
-        vec3 u = glm::normalize(glm::cross(r, f));
-        return mat4(
+    static mat4f lookAt(const vec3f& pos, const vec3f& fwd, const vec3f& up) {
+        vec3f f = glm::normalize(fwd);
+        vec3f r = glm::normalize(glm::cross(f, up));
+        vec3f u = glm::normalize(glm::cross(r, f));
+        return mat4f(
             r.x, r.y, r.z, 0.f,
             u.x, u.y, u.z, 0.f,
             f.x, f.y, f.z, 0.f,
@@ -67,8 +67,8 @@ public:
     float toPlane;
     float planeArea;
     float invPlaneArea;
-    vec3 eye;
-    vec3 center;
-    vec3 up;
-    mat4 transform;
+    vec3f eye;
+    vec3f center;
+    vec3f up;
+    mat4f transform;
 };
