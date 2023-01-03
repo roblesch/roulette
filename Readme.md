@@ -4,3 +4,17 @@ This repository stores code for Spring '23 Directed Research Project "Russian Ro
 
 Project proposal: [project-proposal](https://blog.roblesch.page/assets/roblesch_project_proposal.pdf)
 
+## To Build
+
+Project source can be found in `renderer/`. Current builds are tested in Visual Studio 22 with CMake 3.24.
+
+This project has external dependencies. Clone submodules before building.
+
+```
+$ git submodule update --init --recursive
+```
+
+## References
+
+Thank you to [Benedikt Bitterli](https://benedikt-bitterli.me/resources/) for making freely available the assets used in this project. Benedikt's [Tungsten Renderer](https://github.com/tunabrain/tungsten) provides an excellent resource for reference implementations and debugging.
+
