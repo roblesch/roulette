@@ -1,20 +1,13 @@
-﻿cmake_minimum_required(VERSION 3.8)
-
-include_directories(
-  ${PUGIXML_INCLUDE_DIRS}
-)
-
-add_library(pugixml
-	pugixml.cpp
-	pugixml.hpp
-	pugiconfig.hpp
-)
-
-add_library(core
-	scene_parser.cpp
-	scene_parser.h
-)
-
+﻿add_library(core
+    "camera.h"
+    "primitive.h"
+    "integrator.h"
+    "integrator.cpp"
+    "scene.h"
+    "scene.cpp"
+    "usings.h")
 target_link_libraries(core
-	pugixml
+    glm
+    nlohmann_json
+    pugixml
 )
