@@ -17,10 +17,15 @@ $ git submodule update --init --recursive
 ## References
 
 This project would not be possible without the many resources made publicly available by the rendering community.
+
 https://pbr-book.org/
+
 https://github.com/tunabrain/tungsten
+
 https://github.com/mitsuba-renderer/mitsuba3
+
 https://github.com/Twinklebear/ChameleonRT
+
 https://github.com/RayTracing/raytracing.github.io
 
 Thank you to [Benedikt Bitterli](https://benedikt-bitterli.me/resources/) for making freely available the assets used in this project. Benedikt's [Tungsten Renderer](https://github.com/tunabrain/tungsten) provides an excellent resource for reference implementations and debugging.
