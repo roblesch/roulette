@@ -7,9 +7,3 @@
 [submodule "renderer/ext/json"]
 	path = renderer/ext/json
 	url = git@github.com:roblesch/json.git
-[submodule "renderer/ext/libpng"]
-	path = renderer/ext/libpng
-	url = git@github.com:roblesch/libpng.git
-[submodule "renderer/ext/zlib"]
-	path = renderer/ext/zlib
-	url = git@github.com:roblesch/zlib.git
