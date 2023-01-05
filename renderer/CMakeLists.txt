@@ -8,6 +8,10 @@ if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/glm/CMakeLists.txt")
         $ git submodule update --init --recursive")
 endif()
 
+set(STB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/stb")
+include_directories(${STB_INCLUDE_DIR})
+link_directories(${STB_INCLUDE_DIR})
+
 add_subdirectory("src")
 add_subdirectory("ext")
 

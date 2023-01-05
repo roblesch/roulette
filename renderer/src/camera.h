@@ -40,7 +40,7 @@ public:
         up(up),
         transform(lookAt(eye, center - eye, up)) {};
 
-    vec3f sampleDirection(pixel px) {
+    vec3f sampleDirection(vec2i px) {
         return normalize(transformVec(transform, vec3f(
             -1.0f + 2.0f * (float(px.x) / float(resx)),
             aspect - 2.0f * aspect * (float(px.y) / float(resy)),

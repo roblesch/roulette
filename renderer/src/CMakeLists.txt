@@ -1,13 +1,15 @@
 ﻿add_library(core
     "camera.h"
-    "primitive.h"
+    "framebuffer.h"
+    "framebuffer.cpp"
     "integrator.h"
     "integrator.cpp"
+    "primitive.h"
+    "renderer.h"
     "scene.h"
     "scene.cpp"
     "usings.h")
 target_link_libraries(core
     glm
     nlohmann_json
-    pugixml
-)
+    pugixml)

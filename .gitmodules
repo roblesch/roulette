@@ -7,3 +7,6 @@
 [submodule "renderer/ext/json"]
 	path = renderer/ext/json
 	url = git@github.com:roblesch/json.git
+[submodule "renderer/ext/stb"]
+	path = renderer/ext/stb
+	url = git@github.com:roblesch/stb.git

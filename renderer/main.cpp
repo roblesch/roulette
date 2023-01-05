@@ -1,18 +1,13 @@
 ﻿#include <iostream>
 
-#include "src/scene.h"
+#include "src/renderer.h"
 
 using namespace std;
 
-int main() {
+int main(int argc, char *argv[]) {
     Renderer renderer;
-#ifdef _WIN32
-    renderer.loadTungstenJSON("C:/Users/Christian/source/repos/roulette/renderer/scene.json");
-#elif __APPLE__
-    Renderer.loadTungstenJSON("/Users/roblesch/Projects/roulette/renderer/scene.json");
-#endif
+    renderer.loadTungstenJSON(argv[1]);
     renderer.render();
-    system("out.ppm");
-    cout << "Hello CMake." << endl;
+    system("out.png");
     return 0;
 }
