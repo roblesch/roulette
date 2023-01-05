@@ -243,8 +243,8 @@
   "camera": {
     "tonemap": "filmic",
     "resolution": [
-      200,
-      200
+      500,
+      500 
     ],
     "reconstruction_filter": "tent",
     "transform": {

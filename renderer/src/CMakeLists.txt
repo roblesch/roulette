@@ -5,7 +5,7 @@
     "integrator.cpp"
     "scene.h"
     "scene.cpp"
-    "usings.h")
+    "usings.h" "framebuffer.h" "framebuffer.cpp" "renderer.h")
 target_link_libraries(core
     glm
     nlohmann_json

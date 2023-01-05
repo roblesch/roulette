@@ -1,6 +1,6 @@
 ﻿#include <iostream>
 
-#include "src/scene.h"
+#include "src/renderer.h"
 
 using namespace std;
 
@@ -12,7 +12,7 @@ int main() {
     Renderer.loadTungstenJSON("/Users/roblesch/Projects/roulette/renderer/scene.json");
 #endif
     renderer.render();
-    system("out.ppm");
+    system("out.png");
     cout << "Hello CMake." << endl;
     return 0;
 }

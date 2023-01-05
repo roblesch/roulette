@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -20,11 +21,12 @@ using std::vector;
 using std::make_shared;
 using std::make_unique;
 
-using vec3b = glm::u8vec3;
+using vec2i = glm::u16vec2;
+using vec3c = glm::u8vec3;
 using vec3f = glm::f32vec3;
 using vec4f = glm::f32vec4;
+using vec4c = glm::u8vec4;
 using mat4f = glm::f32mat4;
-using pixel = glm::u16vec2;
 
 using nlohmann::json;
 using value_type = json::value_type;
