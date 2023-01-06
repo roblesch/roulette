@@ -3,29 +3,28 @@
 #include "usings.h"
 
 #include "framebuffer.h"
+#include "integrator.h"
 #include "scene.h"
+#include "sceneparser.h"
 
 class Renderer {
 public:
-    Renderer() {};
+    Renderer() = default;
 
-    void loadTungstenJSON(const char* filename) {
-        scene = Scene::FromTungstenJSON(filename);
-        frame = FrameBuffer(scene.camera.resx,
-            scene.camera.resy);
+    void loadTungstenJSON(const char *filename) {
+        SceneParser::FromTungstenJSON(scene, frame, integrator, filename);
     }
 
-    void loadMitsubaXML(const char* filename) {
-        scene = Scene::FromMitsubaXML(filename);
-        frame = FrameBuffer(scene.camera.resx,
-            scene.camera.resy);
+    void loadMitsubaXML(const char *filename) {
+        SceneParser::FromMitsubaXML(scene, frame, integrator, filename);
     }
 
     void render() {
-        scene.integrator->render(scene, frame);
+        integrator->render(scene, frame);
         frame.toPng("out.png");
     }
 
     Scene scene;
     FrameBuffer frame;
+    unique_ptr<Integrator> integrator;
 };

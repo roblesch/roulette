@@ -1,8 +1,6 @@
-#include "scene.h"
+#include "sceneparser.h"
 
-#include <iostream>
-
-vec3f as_vec3(xml_node node) {
+vec3f as_vec3(const xml_node &node) {
     std::istringstream stream(node.attribute("value").value());
     string token;
     float buf[3];
@@ -13,11 +11,11 @@ vec3f as_vec3(xml_node node) {
     return glm::make_vec3(buf);
 }
 
-vec3f as_vec3(value_type value) {
+vec3f as_vec3(const value_type &value) {
     return glm::make_vec3(value.get<vector<float>>().data());
 }
 
-mat4f as_mat4(xml_node node) {
+mat4f as_mat4(const xml_node &node) {
     std::istringstream stream(node.attribute("value").value());
     string token;
     float buf[16];
@@ -28,33 +26,32 @@ mat4f as_mat4(xml_node node) {
     return glm::make_mat4(buf);
 }
 
-bool is_shape(const xml_node shape_node, const string &type) {
+bool is_shape(const xml_node &shape_node, const string &type) {
     return ((string) shape_node.attribute("type").value()) == type;
 }
 
-Scene Scene::FromMitsubaXML(const char *filename) {
+void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<Integrator> &integrator,
+                                 const char *filename) {
     xml_document doc;
     xml_parse_result result = doc.load_file(filename);
 
     if (result.status != pugi::status_ok) {
-        return {};
     }
 
-    Camera camera;
-    unique_ptr<Integrator> integrator;
+    Camera camera{};
     map<string, shared_ptr<Material>> materials;
     map<string, shared_ptr<Primitive>> primitives;
-    map < string, shared_ptr<Primitive>> lights;
+    map<string, shared_ptr<Primitive>> lights;
 
-    xml_node scene = doc.child("scene");
-    xml_node sensor = scene.child("sensor");
-    xml_object_range<xml_named_node_iterator> bsdfs = scene.children("bsdf");
-    xml_object_range<xml_named_node_iterator> shapes = scene.children("shape");
+    xml_node data = doc.child("scene");
+    xml_node sensor = data.child("sensor");
+    xml_object_range<xml_named_node_iterator> bsdfs = data.children("bsdf");
+    xml_object_range<xml_named_node_iterator> shapes = data.children("shape");
 
     if (sensor) {
-        int width = scene.find_child_by_attribute("default", "name", "resx")
+        int width = data.find_child_by_attribute("default", "name", "resx")
                 .attribute("value").as_int();
-        int height = scene.find_child_by_attribute("default", "name", "resy")
+        int height = data.find_child_by_attribute("default", "name", "resy")
                 .attribute("value").as_int();
         float fov = sensor.find_child_by_attribute("float", "name", "fov")
                 .attribute("value").as_float();
@@ -95,38 +92,36 @@ Scene Scene::FromMitsubaXML(const char *filename) {
         }
     }
 
-    integrator = make_unique<DebugIntegrator>();
-
-    return { camera, integrator, materials, primitives, lights };
+    scene = Scene(camera, materials, primitives, lights);
+    frame = FrameBuffer(camera.resx, camera.resy);
+    integrator = make_unique<PathIntegrator>();
 }
 
-Scene Scene::FromTungstenJSON(const char *filename) {
+void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<Integrator> &integrator,
+                                   const char *filename) {
     std::ifstream f(filename);
     json data = json::parse(f);
 
     if (data.empty()) {
-        return {};
     }
 
-    Camera camera;
-    unique_ptr<Integrator> integrator;
+    Camera camera{};
     map<string, shared_ptr<Material>> materials;
     map<string, shared_ptr<Primitive>> primitives;
     map<string, shared_ptr<Primitive>> lights;
-    
-    for (value_type _bsdf : data["bsdfs"]) {
+
+    for (value_type _bsdf: data["bsdfs"]) {
         string name = _bsdf["name"];
         if (_bsdf["type"] == "lambert") {
             vec3f albedo = as_vec3(_bsdf["albedo"]);
             materials[name] = make_shared<Lambertian>(albedo);
-        }
-        else if (_bsdf["type"] == "null") {
-            vec3f albedo = vec3f(_bsdf["albedo"]);
-            materials[name] = make_shared<Lambertian>(albedo);
+        } else if (_bsdf["type"] == "null") {
+            float albedo = _bsdf["albedo"];
+            materials[name] = make_shared<Lambertian>(vec3f(albedo));
         }
     }
 
-    for (value_type _prim : data["primitives"]) {
+    for (value_type _prim: data["primitives"]) {
         shared_ptr<Shape> shape;
         shared_ptr<Emitter> emit;
 
@@ -134,26 +129,25 @@ Scene Scene::FromTungstenJSON(const char *filename) {
         value_type tsf = _prim["transform"];
 
         vec3f pos = tsf.contains("position") ?
-            as_vec3(tsf["position"]) :
-            vec3f(0);
+                    as_vec3(tsf["position"]) :
+                    vec3f(0);
         vec3f scale = tsf.contains("scale") ?
-            as_vec3(tsf["scale"]) :
-            vec3f(1);
+                      as_vec3(tsf["scale"]) :
+                      vec3f(1);
         vec3f rot = tsf.contains("rotation") ?
-            as_vec3(tsf["rotation"]) :
-            vec3f(0);
+                    as_vec3(tsf["rotation"]) :
+                    vec3f(0);
 
         if (_prim["type"] == "quad") {
             shape = make_shared<Rectangle>(pos, scale, rot);
-        }
-        else if (_prim["type"] == "cube") {
+        } else if (_prim["type"] == "cube") {
             shape = make_shared<Cube>(pos, scale, rot);
         }
 
         primitives[name] = make_shared<Primitive>(
-            shape,
-            materials[name],
-            emit);
+                shape,
+                materials[name],
+                emit);
 
         if (_prim.contains("emission")) {
             vec3f radiance = as_vec3(_prim["emission"]);
@@ -175,10 +169,10 @@ Scene Scene::FromTungstenJSON(const char *filename) {
 
     if (data.contains("integrator")) {
         if (data["integrator"]["type"] == "path_tracer") {
-            //integrator = PathIntegrator();
-            integrator = make_unique<DebugIntegrator>();
+            integrator = make_unique<PathIntegrator>();
         }
     }
 
-    return { camera, integrator, materials, primitives, lights };
-};
+    scene = Scene(camera, materials, primitives, lights);
+    frame = FrameBuffer(camera.resx, camera.resy);
+}
