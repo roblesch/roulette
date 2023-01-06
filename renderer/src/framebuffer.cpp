@@ -8,28 +8,28 @@
 vec3c FrameBuffer::Rgb(int px) {
     vec3f pixel = get(px);
     return {
-        static_cast<char>(256 * clamp(pixel.r)),
-        static_cast<char>(256 * clamp(pixel.g)),
-        static_cast<char>(256 * clamp(pixel.b))
+            static_cast<char>(256 * clamp(pixel.r)),
+            static_cast<char>(256 * clamp(pixel.g)),
+            static_cast<char>(256 * clamp(pixel.b))
     };
 }
 
 vec4c FrameBuffer::Rgba(int px) {
     vec3f pixel = get(px);
     return {
-        static_cast<char>(256 * clamp(pixel.r)),
-        static_cast<char>(256 * clamp(pixel.g)),
-        static_cast<char>(256 * clamp(pixel.b)),
-        255
+            static_cast<char>(256 * clamp(pixel.r)),
+            static_cast<char>(256 * clamp(pixel.g)),
+            static_cast<char>(256 * clamp(pixel.b)),
+            255
     };
 }
 
-void FrameBuffer::toPpm(const char* filename) {
+void FrameBuffer::toPpm(const char *filename) {
     std::ofstream out(filename);
     out << "P3\n" << resx << ' ' << resy << "\n255\n";
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
-            vec3f px = Rgb(vec2i(i,j));
+            vec3f px = Rgb(vec2i(i, j));
             out << px.r << ' '
                 << px.g << ' '
                 << px.b << '\n';
@@ -37,7 +37,7 @@ void FrameBuffer::toPpm(const char* filename) {
     }
 }
 
-void FrameBuffer::toPng(const char* filename) {
+void FrameBuffer::toPng(const char *filename) {
     rgbBuf = vector<vec4c>(resx * resy);
     for (int i = 0; i < buf.size(); i++) {
         rgbBuf[i] = Rgba(i);

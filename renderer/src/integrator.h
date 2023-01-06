@@ -2,21 +2,20 @@
 
 #include "usings.h"
 
-class Scene;
-class FrameBuffer;
+#include "framebuffer.h"
+#include "pathtracer.h"
+#include "scene.h"
 
 class Integrator {
 public:
     virtual ~Integrator() = default;
-    virtual void render(Scene& scene, FrameBuffer& frame) = 0;
-};
 
-class DebugIntegrator : public Integrator {
-public:
-    void render(Scene& scene, FrameBuffer& frame);
+    virtual void render(Scene &scene, FrameBuffer &frame) = 0;
+
+    unique_ptr<Tracer> tracer;
 };
 
 class PathIntegrator : public Integrator {
 public:
-    void render(Scene& scene, FrameBuffer& frame);
+    void render(Scene &scene, FrameBuffer &frame) override;
 };
