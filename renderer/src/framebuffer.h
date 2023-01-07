@@ -34,5 +34,5 @@ public:
     int resx{};
     int resy{};
     vector<vec3f> buf;
-    vector<vec4c> rgbBuf;
+    vector<vec3c> rgbBuf;
 };

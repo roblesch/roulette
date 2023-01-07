@@ -39,9 +39,9 @@ void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<In
     }
 
     Camera camera{};
-    map<string, shared_ptr<Material>> materials;
-    map<string, shared_ptr<Primitive>> primitives;
-    map<string, shared_ptr<Primitive>> lights;
+    unordered_map<string, shared_ptr<Material>> materials;
+    unordered_map<string, shared_ptr<Primitive>> primitives;
+    unordered_map<string, shared_ptr<Primitive>> lights;
 
     xml_node data = doc.child("scene");
     xml_node sensor = data.child("sensor");
@@ -106,9 +106,9 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
     }
 
     Camera camera{};
-    map<string, shared_ptr<Material>> materials;
-    map<string, shared_ptr<Primitive>> primitives;
-    map<string, shared_ptr<Primitive>> lights;
+    unordered_map<string, shared_ptr<Material>> materials;
+    unordered_map<string, shared_ptr<Primitive>> primitives;
+    unordered_map<string, shared_ptr<Primitive>> lights;
 
     for (value_type _bsdf: data["bsdfs"]) {
         string name = _bsdf["name"];

@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <fstream>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -11,7 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-using std::map;
+using std::unordered_map;
 using std::shared_ptr;
 using std::string;
 using std::unique_ptr;

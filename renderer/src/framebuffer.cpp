@@ -38,9 +38,9 @@ void FrameBuffer::toPpm(const char *filename) {
 }
 
 void FrameBuffer::toPng(const char *filename) {
-    rgbBuf = vector<vec4c>(resx * resy);
+    rgbBuf = vector<vec3c>(resx * resy);
     for (int i = 0; i < buf.size(); i++) {
-        rgbBuf[i] = Rgba(i);
+        rgbBuf[i] = Rgb(i);
     }
-    stbi_write_png(filename, resx, resy, 4, rgbBuf.data(), resx * 4);
+    stbi_write_png(filename, resx, resy, 3, rgbBuf.data(), resx * 3);
 }

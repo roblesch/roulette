@@ -9,6 +9,10 @@ int main(int argc, char *argv[]) {
     renderer.loadTungstenJSON(argv[1]);
     std::filesystem::remove("out.png");
     renderer.render();
+#ifdef _WIN32
     system("out.png");
+#elifdef  __APPLE__
+    system("open out.png");
+#endif
     return 0;
 }
