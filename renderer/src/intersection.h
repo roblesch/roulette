@@ -7,7 +7,7 @@ class Material;
 
 struct IntersectionPrimitive {
     Primitive* primitive;
-    Material* material;
+    shared_ptr<Material> material;
     float tnear;
     float tfar;
     vec3f normal;

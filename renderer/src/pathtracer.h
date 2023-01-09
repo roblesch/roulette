@@ -12,7 +12,12 @@ public:
     virtual vec3f trace(const Scene &scene, const vec2i &px) = 0;
 };
 
-class DebugPathTracer : public Tracer {
+class CameraDebugTracer : public Tracer {
 public:
     vec3f trace(const Scene &scene, const vec2i &px) override;
+};
+
+class IntersectionDebugTracer : public Tracer {
+public:
+    vec3f trace(const Scene& scene, const vec2i& px) override;
 };

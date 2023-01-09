@@ -9,6 +9,7 @@
         "pathtracer.h"
         "pathtracer.cpp"
         "primitive.h"
+        "primitive.cpp"
         "ray.h"
         "renderer.h"
         "scene.h"
@@ -16,6 +17,7 @@
         "sceneparser.h"
         "sceneparser.cpp"
         "shape.h"
+        "shape.cpp"
         "usings.h")
 target_link_libraries(core
         glm

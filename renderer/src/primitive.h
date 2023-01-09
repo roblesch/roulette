@@ -16,11 +16,7 @@ public:
             material(std::move(material)),
             emitter(std::move(emitter)) {};
 
-    bool intersect(const Ray &ray, IntersectionPrimitive& intersection) {
-//        if (shape.intersect(ray, intersection)) {
-//            intersection.material = material;
-//        }
-    }
+    bool intersect(const Ray& ray, IntersectionPrimitive& intersection);
 
     shared_ptr<Shape> shape;
     shared_ptr<Material> material;

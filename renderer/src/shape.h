@@ -2,6 +2,9 @@
 
 #include "usings.h"
 
+#include "ray.h"
+#include "intersection.h"
+
 class Shape {
 public:
     explicit Shape(const mat4f &to_world) :
@@ -34,6 +37,8 @@ public:
         to_obj = glm::inverse(T);
     };
 
+    virtual bool intersect(const Ray& ray) = 0;
+
     vec3f pos;
     vec3f scale;
     vec3f rot3;
@@ -52,6 +57,8 @@ public:
               const vec3f &rot3) :
             Shape(pos, scale, rot3) {};
 
+    bool intersect(const Ray& ray) override;
+
     vec3f a{-1, -1, 0};
     vec3f b{1, 1, 0};
     vec3f normal{0, 0, 1};
@@ -65,6 +72,8 @@ public:
          const vec3f &scale,
          const vec3f &rot3) :
             Shape(pos, scale, rot3) {};
+
+    bool intersect(const Ray& ray) override;
 
     vec3f a{-1, -1, -1};
     vec3f b{1, 1, 1};
