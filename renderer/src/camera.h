@@ -42,25 +42,39 @@ public:
             eye(eye),
             center(center),
             up(up),
-            transform(lookAt(eye, center - eye, up)) {};
+            transform(lookAt(eye, center, up)) {};
 
     [[nodiscard]] vec3f sampleDirection(vec2i px) const {
-        return normalize(transformVec(transform, vec3f(
-                -1.0f + 2.0f * (float(px.x) / float(resx)),
-                aspect - 2.0f * aspect * (float(px.y) / float(resy)),
-                toPlane)));
+        vec3f d1 = vec3f(
+            -1.0f + 2.0f * (float(px.x) / float(resx)),
+            aspect - 2.0f * aspect * (float(px.y) / float(resy)),
+            -toPlane);
+        vec3f d2 = transformVec(transform, d1);
+        vec3f e2 = eye + d2;
+        return glm::normalize(e2);
     }
 
     static mat4f lookAt(const vec3f &pos, const vec3f &fwd, const vec3f &up) {
         vec3f f = glm::normalize(fwd);
         vec3f r = glm::normalize(glm::cross(f, up));
         vec3f u = glm::normalize(glm::cross(r, f));
-        return {
+        mat4f mine{
                 r.x, r.y, r.z, 0.f,
                 u.x, u.y, u.z, 0.f,
                 f.x, f.y, f.z, 0.f,
                 pos.x, pos.y, pos.z, 1.f
         };
+//        return {
+//            r.x, u.x, f.x, pos.x,
+//            r.y, u.y, f.y, pos.y,
+//            r.z, u.z, f.z, pos.z,
+//            0.f, 0.f, 0.f, 1.f
+//        };
+        mat4f lA = glm::lookAt(pos, fwd, up);
+        mat4f ret = glm::rotate(lA, 180.f, vec3f(0,1,0));
+        mat4f id = glm::identity<mat4f>();
+        mat4f flip = glm::rotate(id, 180.f, vec3f(0,1,0));
+        return glm::lookAt(pos, fwd, up);
     }
 
     int resx;

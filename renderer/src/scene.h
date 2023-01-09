@@ -5,6 +5,7 @@
 #include "camera.h"
 #include "material.h"
 #include "primitive.h"
+#include "ray.h"
 
 class Scene {
 public:
@@ -18,6 +19,8 @@ public:
             materials(std::move(mats)),
             primitives(std::move(prims)),
             lights(std::move(lights)) {};
+
+    bool intersect(const Ray &ray, IntersectionPrimitive &intersection);
 
     Camera camera{};
     unordered_map<string, shared_ptr<Material>> materials;

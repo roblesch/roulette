@@ -8,18 +8,18 @@
 vec3c FrameBuffer::Rgb(int px) {
     vec3f pixel = get(px);
     return {
-            static_cast<char>(256 * clamp(pixel.r)),
-            static_cast<char>(256 * clamp(pixel.g)),
-            static_cast<char>(256 * clamp(pixel.b))
+            static_cast<char>(255 * clamp(pixel.r)),
+            static_cast<char>(255 * clamp(pixel.g)),
+            static_cast<char>(255 * clamp(pixel.b))
     };
 }
 
 vec4c FrameBuffer::Rgba(int px) {
     vec3f pixel = get(px);
     return {
-            static_cast<char>(256 * clamp(pixel.r)),
-            static_cast<char>(256 * clamp(pixel.g)),
-            static_cast<char>(256 * clamp(pixel.b)),
+            static_cast<char>(255 * clamp(pixel.r)),
+            static_cast<char>(255 * clamp(pixel.g)),
+            static_cast<char>(255 * clamp(pixel.b)),
             255
     };
 }

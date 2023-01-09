@@ -22,6 +22,7 @@ public:
     void render() {
         integrator->render(scene, frame);
         frame.toPng("out.png");
+        frame.toPpm("out.ppm");
     }
 
     Scene scene;
