@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SCENE_H
+#define SCENE_H
 
 #include "usings.h"
 
@@ -27,3 +28,5 @@ public:
     unordered_map<string, shared_ptr<Primitive>> primitives;
     unordered_map<string, shared_ptr<Primitive>> lights;
 };
+
+#endif

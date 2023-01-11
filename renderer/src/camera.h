@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CAMERA_H
+#define CAMERA_H
 
 #include <cmath>
 
@@ -11,7 +12,7 @@ public:
     Camera(int resx,
            int resy,
            float fovd,
-           const mat4f &transform) :
+           const Mat4f &transform) :
             resx(resx),
             resy(resy),
             aspect((float) resy / (float) resx),
@@ -20,17 +21,17 @@ public:
             toPlane(0),
             planeArea(0),
             invPlaneArea(0),
-            eye(0),
-            center(0),
-            up(0),
+            eye(0.0f, 0.0f, 0.0f),
+            center(0.0f, 0.0f, -1.0f),
+            up(0.0f, 1.0f, 0.0f),
             transform(transform) {};
 
     Camera(int resx,
            int resy,
            float fovd,
-           const vec3f &eye,
-           const vec3f &center,
-           const vec3f &up) :
+           const Vec3f &eye,
+           const Vec3f &center,
+           const Vec3f &up) :
             resx(resx),
             resy(resy),
             aspect((float) resy / (float) resx),
@@ -42,39 +43,29 @@ public:
             eye(eye),
             center(center),
             up(up),
-            transform(glm::lookAt(eye, center, up)) {};
+            transform(Mat4f::lookAt(eye, center - eye, up)) {};
 
-    [[nodiscard]] vec3f sampleDirection(vec2i px) const {
-        vec3f camDir = vec3f(
-            -1.0f + 2.0f * (float(px.x) / float(resx)),
-            aspect - 2.0f * aspect * (float(px.y) / float(resy)),
-            -toPlane);
-        vec3f worldDir = transformVec(transform, camDir);
-        return glm::normalize(worldDir);
+    [[nodiscard]] Vec3f sampleDirection(Vec2i px) const {
+        Vec3f camDir = Vec3f(
+                -1.0f + 2.0f * (float(px.x()) / float(resx)),
+                aspect - 2.0f * aspect * (float(px.y()) / float(resy)),
+                -toPlane);
+        Vec3f worldDir = transform * camDir;
+        return worldDir.normalized();
     }
 
-    //static mat4f lookAt(const vec3f &pos, const vec3f &fwd, const vec3f &up) {
-    //    vec3f f = glm::normalize(fwd);
-    //    vec3f r = glm::normalize(glm::cross(f, up));
-    //    vec3f u = glm::normalize(glm::cross(r, f));
-    //    return {
-    //        r.x, u.x, f.x, pos.x,
-    //        r.y, u.y, f.y, pos.y,
-    //        r.z, u.z, f.z, pos.z,
-    //        0.f, 0.f, 0.f, 1.f
-    //    };
-    //}
-
-    int resx;
-    int resy;
-    float aspect;
-    float fovd;
-    float fovr;
-    float toPlane;
-    float planeArea;
-    float invPlaneArea;
-    vec3f eye;
-    vec3f center;
-    vec3f up;
-    mat4f transform;
+    int resx{};
+    int resy{};
+    float aspect{};
+    float fovd{};
+    float fovr{};
+    float toPlane{};
+    float planeArea{};
+    float invPlaneArea{};
+    Vec3f eye{};
+    Vec3f center{};
+    Vec3f up{};
+    Mat4f transform;
 };
+
+#endif

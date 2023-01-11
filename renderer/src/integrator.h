@@ -1,4 +1,5 @@
-#pragma once
+#ifndef INTEGRATOR_H
+#define INTEGRATOR_H
 
 #include "usings.h"
 
@@ -19,3 +20,5 @@ class PathIntegrator : public Integrator {
 public:
     void render(Scene &scene, FrameBuffer &frame) override;
 };
+
+#endif

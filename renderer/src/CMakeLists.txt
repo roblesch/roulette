@@ -6,6 +6,7 @@
         "integrator.cpp"
         "intersection.h"
         "material.h"
+        "math.h"
         "pathtracer.h"
         "pathtracer.cpp"
         "primitive.h"
@@ -20,6 +21,5 @@
         "shape.cpp"
         "usings.h")
 target_link_libraries(core
-        glm
         nlohmann_json
         pugixml)

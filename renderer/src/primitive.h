@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PRIMITIVE_H
+#define PRIMITIVE_H
 
 #include "usings.h"
 
@@ -22,3 +23,5 @@ public:
     shared_ptr<Material> material;
     shared_ptr<Emitter> emitter;
 };
+
+#endif

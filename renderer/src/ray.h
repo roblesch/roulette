@@ -1,21 +1,24 @@
-#pragma once
+#ifndef RAY_H
+#define RAY_H
 
 #include "usings.h"
 
 class Ray {
 public:
     Ray() :
-        o(vec3f()),
-        d(vec3f(0, 0, -1)),
+        o(Vec3f(0.0f, 0.0f, 0.0f)),
+        d(Vec3f(0.0f, 0.0f, -1.0f)),
         t(0) {};
-    Ray(const vec3f &o, const vec3f &d) :
+    Ray(const Vec3f &o, const Vec3f &d) :
             o(o),
-            d(normalize(d)),
+            d(d),
             t(0) {};
 
-    [[nodiscard]] vec3f at(float dt) const { return o + d * dt; }
+    [[nodiscard]] Vec3f at(float dt) const { return o + d * dt; }
 
-    vec3f o;
-    vec3f d;
+    Vec3f o;
+    Vec3f d;
     float t;
 };
+
+#endif

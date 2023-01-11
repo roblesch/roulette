@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SHAPE_H
+#define SHAPE_H
 
 #include "usings.h"
 
@@ -7,74 +8,85 @@
 
 class Shape {
 public:
-    explicit Shape(const mat4f &to_world) :
-            pos(vec3f()),
-            scale(vec3f()),
-            rot3(vec3f()),
-            rot4(mat4f()),
-            invRot(mat4f()),
+    explicit Shape(const Mat4f &to_world) :
+            pos(Vec3f(0.0f, 0.0f, 0.0f)),
+            scale(Vec3f(1.0f, 1.0f, 1.0f)),
+            rot3(Vec3f(0.0f, 0.0f, 0.0f)),
+            rot4(Mat4f()),
+            invRot(Mat4f()),
             to_world(to_world),
-            to_obj(inverse(to_world)) {};
+            to_obj(to_world.invert()) {};
 
-    Shape(const vec3f &pos,
-          const vec3f &scale,
-          const vec3f &rot3) :
+    Shape(const Vec3f &pos,
+          const Vec3f &scale,
+          const Vec3f &rot3) :
             pos(pos),
             scale(scale),
             rot3(rot3) {
 
-        mat4f T(1), R(1);
-        T = glm::translate(T, pos);
-        T = glm::scale(T, scale);
-        R = glm::rotate(R, rot3.x, vec3f(1, 0, 0));
-        R = glm::rotate(R, rot3.y, vec3f(0, 1, 0));
-        R = glm::rotate(R, rot3.z, vec3f(0, 0, 1));
-        T = T * R;
+        Vec3f x(1.0f, 0.0f, 0.0f);
+        Vec3f y(0.0f, 1.0f, 0.0f);
+        Vec3f z(0.0f, 0.0f, 1.0f);
 
-        rot4 = R;
-        invRot = glm::inverse(rot4);
-        to_world = T;
-        to_obj = glm::inverse(T);
+        x *= scale.x();
+        y *= scale.y();
+        z *= scale.z();
+        Mat4f tform = Mat4f::rotYXZ(rot3);
+        x = tform * x;
+        y = tform * y;
+        z = tform * z;
+
+        rot4 = tform;
+        invRot = tform.invert();
+        to_world = Mat4f(
+            x[0], y[0], z[0], pos[0],
+            x[1], y[1], z[1], pos[1],
+            x[2], y[2], z[2], pos[2],
+            0.0f, 0.0f, 0.0f, 1.0f
+        );
+        to_obj = to_world.invert();
     };
 
     virtual bool intersect(const Ray& ray) = 0;
 
-    vec3f pos;
-    vec3f scale;
-    vec3f rot3;
-    mat4f rot4{};
-    mat4f invRot{};
-    mat4f to_world{};
-    mat4f to_obj{};
+    Vec3f pos;
+    Vec3f scale;
+    Vec3f rot3;
+    Mat4f rot4{};
+    Mat4f invRot{};
+    Mat4f to_world{};
+    Mat4f to_obj{};
 };
 
 class Rectangle : public Shape {
 public:
-    explicit Rectangle(const mat4f &transform) : Shape(transform) {};
+    explicit Rectangle(const Mat4f &transform) : Shape(transform) {};
 
-    Rectangle(const vec3f &pos,
-              const vec3f &scale,
-              const vec3f &rot3) :
+    Rectangle(const Vec3f &pos,
+              const Vec3f &scale,
+              const Vec3f &rot3) :
             Shape(pos, scale, rot3) {};
 
     bool intersect(const Ray& ray) override;
 
-    vec3f a{-1, -1, 0};
-    vec3f b{1, 1, 0};
-    vec3f normal{0, 0, 1};
+    Vec3f a{-1, -1, 0};
+    Vec3f b{1, 1, 0};
+    Vec3f normal{0, 0, 1};
 };
 
 class Cube : public Shape {
 public:
-    explicit Cube(const mat4f &transform) : Shape(transform) {};
+    explicit Cube(const Mat4f &transform) : Shape(transform) {};
 
-    Cube(const vec3f &pos,
-         const vec3f &scale,
-         const vec3f &rot3) :
-            Shape(pos, scale, rot3) {};
+    Cube(const Vec3f &pos,
+         const Vec3f &scale,
+         const Vec3f &rot3) :
+            Shape(pos, scale*0.5f, rot3) {};
 
     bool intersect(const Ray& ray) override;
 
-    vec3f a{-1, -1, -1};
-    vec3f b{1, 1, 1};
+    Vec3f a{-1, -1, -1};
+    Vec3f b{1, 1, 1};
 };
+
+#endif

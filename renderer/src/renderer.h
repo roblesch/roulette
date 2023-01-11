@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_H
+#define RENDERER_H
 
 #include "usings.h"
 
@@ -28,3 +29,5 @@ public:
     FrameBuffer frame;
     unique_ptr<Integrator> integrator;
 };
+
+#endif

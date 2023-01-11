@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PATHTRACER_H
+#define PATHTRACER_H
 
 #include "usings.h"
 
@@ -9,15 +10,17 @@ class Tracer {
 public:
     virtual ~Tracer() = default;
 
-    virtual vec3f trace(const Scene &scene, const vec2i &px) = 0;
+    virtual Vec3f trace(const Scene &scene, const Vec2i &px) = 0;
 };
 
 class CameraDebugTracer : public Tracer {
 public:
-    vec3f trace(const Scene &scene, const vec2i &px) override;
+    Vec3f trace(const Scene &scene, const Vec2i &px) override;
 };
 
 class IntersectionDebugTracer : public Tracer {
 public:
-    vec3f trace(const Scene& scene, const vec2i& px) override;
+    Vec3f trace(const Scene& scene, const Vec2i& px) override;
 };
+
+#endif
