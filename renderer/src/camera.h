@@ -49,8 +49,8 @@ public:
         Vec3f camDir = Vec3f(
                 -1.0f + 2.0f * (float(px.x()) / float(resx)),
                 aspect - 2.0f * aspect * (float(px.y()) / float(resy)),
-                -toPlane);
-        Vec3f worldDir = transform * camDir;
+                toPlane).normalized();
+        Vec3f worldDir = transform.transformVector(camDir);
         return worldDir.normalized();
     }
 

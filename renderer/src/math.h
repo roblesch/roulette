@@ -1,4 +1,13 @@
-/*
+/* 
+This file is a compilation of mathematical primitives and util functions from
+Benedikt Bitterli's Tungsten renderer - https://github.com/tunabrain/tungsten
+It combines selections from the Mat4, Vec and Math Util implementations.
+
+Some modifications have been made - mostly to satisfy clang-tidy's modernize
+suggestions. Functionally, they behave as offered.
+
+---
+
 Copyright (c) 2014 Benedikt Bitterli <benedikt.bitterli (at) gmail (dot) com>
 
 This software is provided 'as-is', without any express or implied warranty.
@@ -30,6 +39,8 @@ it freely, subject to the following restrictions:
 #include <ostream>
 #include <type_traits>
 
+/* Angle.hpp */
+
 const float PI = 3.1415926536f;
 const float PI_HALF = PI * 0.5f;
 const float TWO_PI = PI * 2.0f;
@@ -40,6 +51,11 @@ const float INV_FOUR_PI = 0.25f * INV_PI;
 const float SQRT_PI = 1.77245385091f;
 const float INV_SQRT_PI = 1.0f / SQRT_PI;
 
+const float F_NEAR_ZERO = 1e-4f;
+const float F_INFTY = std::numeric_limits<float>::infinity();
+
+/* IntTypes.hpp */
+
 typedef std::uint8_t uint8;
 typedef std::uint16_t uint16;
 typedef std::uint32_t uint32;
@@ -49,6 +65,8 @@ typedef std::int8_t int8;
 typedef std::int16_t int16;
 typedef std::int32_t int32;
 typedef std::int64_t int64;
+
+/* Vec.hpp */
 
 template<typename ElementType, unsigned Size>
 class Vec {
@@ -529,6 +547,8 @@ typedef Vec<uint8, 4> Vec4c;
 typedef Vec<uint8, 3> Vec3c;
 typedef Vec<uint8, 2> Vec2c;
 
+/* Mat4f.hpp */
+
 class Mat4f;
 
 static inline Mat4f operator*(const Mat4f &a, const Mat4f &b);
@@ -882,6 +902,32 @@ static inline Vec3f operator*(const Mat4f &a, const Vec3f &b) {
             a.a21 * b.x() + a.a22 * b.y() + a.a23 * b.z() + a.a24,
             a.a31 * b.x() + a.a32 * b.y() + a.a33 * b.z() + a.a34
     };
+}
+
+/* MathUtil.hpp */
+
+template<typename T>
+T min(const T& a, const T& b)
+{
+    return a < b ? a : b;
+}
+
+template<typename T, typename... Ts>
+T min(const T& a, const T& b, const Ts &... ts)
+{
+    return min(min(a, b), ts...);
+}
+
+template<typename T>
+T max(const T& a, const T& b)
+{
+    return a > b ? a : b;
+}
+
+template<typename T, typename... Ts>
+T max(const T& a, const T& b, const Ts &... ts)
+{
+    return max(max(a, b), ts...);
 }
 
 #endif

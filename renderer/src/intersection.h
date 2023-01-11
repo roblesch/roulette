@@ -10,8 +10,9 @@ class Material;
 struct IntersectionPrimitive {
     Primitive *primitive;
     shared_ptr<Material> material;
-    float tnear;
-    float tfar;
+    bool front;
+    float tnear = F_NEAR_ZERO;
+    float tfar = F_INFTY;
     Vec3f normal;
     Vec3f p;
 };

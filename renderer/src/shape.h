@@ -47,7 +47,7 @@ public:
         to_obj = to_world.invert();
     };
 
-    virtual bool intersect(const Ray& ray) = 0;
+    virtual bool intersect(const Ray& ray, IntersectionPrimitive& intersection) = 0;
 
     Vec3f pos;
     Vec3f scale;
@@ -65,13 +65,29 @@ public:
     Rectangle(const Vec3f &pos,
               const Vec3f &scale,
               const Vec3f &rot3) :
-            Shape(pos, scale, rot3) {};
+            Shape(pos, scale, rot3) {
+        _base = to_world * Vec3f(0.0f);
+        _edge0 = to_world.transformVector(Vec3f(1.0f, 0.0f, 0.0f));
+        _edge1 = to_world.transformVector(Vec3f(0.0f, 0.0f, 1.0f));
+        _base -= _edge0 * 0.5f;
+        _base -= _edge1 * 0.5f;
+        Vec3f n = _edge1.cross(_edge0);
+        _area = n.length();
+        _invArea = 1.0f / _area;
+        n /= _area;
+        _invUvSq = 1.0f / Vec2f(_edge0.lengthSq(), _edge1.lengthSq());
+        _normal = n;
+    };
 
-    bool intersect(const Ray& ray) override;
+    bool intersect(const Ray& ray, IntersectionPrimitive& intersection) override;
 
-    Vec3f a{-1, -1, 0};
-    Vec3f b{1, 1, 0};
-    Vec3f normal{0, 0, 1};
+    Vec3f _base;
+    Vec3f _edge0, _edge1;
+    //TangentFrame _frame;
+    Vec2f _invUvSq;
+    float _area;
+    float _invArea;
+    Vec3f _normal;
 };
 
 class Cube : public Shape {
@@ -83,10 +99,7 @@ public:
          const Vec3f &rot3) :
             Shape(pos, scale*0.5f, rot3) {};
 
-    bool intersect(const Ray& ray) override;
-
-    Vec3f a{-1, -1, -1};
-    Vec3f b{1, 1, 1};
+    bool intersect(const Ray& ray, IntersectionPrimitive& intersection) override;
 };
 
 #endif
