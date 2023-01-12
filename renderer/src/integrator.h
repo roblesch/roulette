@@ -16,7 +16,12 @@ public:
     unique_ptr<Tracer> tracer;
 };
 
-class PathIntegrator : public Integrator {
+class RayCastIntegrator : public Integrator {
+public:
+    void render(Scene &scene, FrameBuffer &frame) override;
+};
+
+class PathTraceIntegrator : public Integrator {
 public:
     void render(Scene &scene, FrameBuffer &frame) override;
 };

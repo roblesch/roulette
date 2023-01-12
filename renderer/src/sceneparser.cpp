@@ -99,7 +99,7 @@ void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<In
 
     scene = Scene(camera, materials, primitives, lights);
     frame = FrameBuffer(camera.resx, camera.resy);
-    integrator = make_unique<PathIntegrator>();
+    integrator = make_unique<PathTraceIntegrator>();
 }
 
 void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<Integrator> &integrator,
@@ -174,7 +174,7 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
 
     if (data.contains("integrator")) {
         if (data["integrator"]["type"] == "path_tracer") {
-            integrator = make_unique<PathIntegrator>();
+            integrator = make_unique<PathTraceIntegrator>();
         }
     }
 

@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "math.h"
+#include "tungstenmath.h"
 
 using std::unordered_map;
 using std::shared_ptr;
@@ -24,5 +24,7 @@ inline float clamp(float f) { return f < 0.0f ? 0.0f : (f > 1.0f ? 1.0f : f); }
 inline float d_to_r(float d) { return d * (PI / 180.0f); }
 
 inline float r_to_d(float r) { return r * (180.0f / PI); }
+
+inline float randf() { return static_cast<float>(rand()) / static_cast <float> (RAND_MAX); }
 
 #endif

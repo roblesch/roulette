@@ -6,7 +6,6 @@
         "integrator.cpp"
         "intersection.h"
         "material.h"
-        "math.h"
         "pathtracer.h"
         "pathtracer.cpp"
         "primitive.h"
@@ -19,6 +18,7 @@
         "sceneparser.cpp"
         "shape.h"
         "shape.cpp"
+        "tungstenmath.h"
         "usings.h")
 target_link_libraries(core
         nlohmann_json

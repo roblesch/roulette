@@ -30,8 +30,8 @@ it freely, subject to the following restrictions:
        distribution.
 */
 
-#ifndef MATH_H
-#define MATH_H
+#ifndef TUNGSTENMATH_H
+#define TUNGSTENMATH_H
 
 #include <array>
 #include <cmath>

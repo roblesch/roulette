@@ -8,6 +8,7 @@ public:
     virtual ~Material() = default;
 
     Vec3f albedo{};
+    Vec3f debug{randf(), randf(), randf()};
 };
 
 class Lambertian : public Material {

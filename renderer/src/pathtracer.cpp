@@ -17,7 +17,7 @@ Vec3f IntersectionDebugTracer::trace(const Scene& scene, const Vec2i& px) {
     IntersectionPrimitive intersection;
     scene.intersect(ray, intersection);
     if (intersection.material) {
-        return intersection.material->albedo;
+        return intersection.material->debug;
     }
-    return cam.sampleDirection(px);
+    return Vec3f(0.0f);
 }
