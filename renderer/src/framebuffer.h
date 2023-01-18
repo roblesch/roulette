@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FRAMEBUFFER_H
+#define FRAMEBUFFER_H
 
 #include "usings.h"
 
@@ -9,23 +10,23 @@ public:
     FrameBuffer(int resx, int resy) :
             resx(resx),
             resy(resy),
-            buf(vector<vec3f>(resx * resy)) {};
+            buf(vector<Vec3f>(resx * resy)) {};
 
-    void set(int px, vec3f v) { buf[px] = v; }
+    void set(int px, Vec3f v) { buf[px] = v; }
 
-    void set(vec2i px, vec3f v) { set(px.y * resx + px.x, v); }
+    void set(Vec2i px, Vec3f v) { set(px.y() * resx + px.x(), v); }
 
-    vec3f get(int px) { return buf[px]; }
+    Vec3f get(int px) { return buf[px]; }
 
-    vec3f get(vec2i px) { return get(px.y * resx + px.x); }
+    Vec3f get(Vec2i px) { return get(px.y() * resx + px.x()); }
 
-    vec3c Rgb(int px);
+    Vec3c Rgb(int px);
 
-    vec3c Rgb(vec2i px) { return Rgb(px.y * resx + px.x); }
+    Vec3c Rgb(Vec2i px) { return Rgb(px.y() * resx + px.x()); }
 
-    vec4c Rgba(int px);
+    Vec4c Rgba(int px);
 
-    vec4c Rgba(vec2i px) { return Rgba(px.y * resx + px.x); }
+    Vec4c Rgba(Vec2i px) { return Rgba(px.y() * resx + px.x()); }
 
     void toPpm(const char *filename);
 
@@ -33,6 +34,8 @@ public:
 
     int resx{};
     int resy{};
-    vector<vec3f> buf;
-    vector<vec4c> rgbBuf;
+    vector<Vec3f> buf;
+    vector<Vec3c> rgbBuf;
 };
+
+#endif

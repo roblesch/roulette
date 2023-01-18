@@ -1,4 +1,5 @@
-#pragma once
+#ifndef INTEGRATOR_H
+#define INTEGRATOR_H
 
 #include "usings.h"
 
@@ -15,7 +16,14 @@ public:
     unique_ptr<Tracer> tracer;
 };
 
-class PathIntegrator : public Integrator {
+class RayCastIntegrator : public Integrator {
 public:
     void render(Scene &scene, FrameBuffer &frame) override;
 };
+
+class PathTraceIntegrator : public Integrator {
+public:
+    void render(Scene &scene, FrameBuffer &frame) override;
+};
+
+#endif

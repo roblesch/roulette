@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RENDERER_H
+#define RENDERER_H
 
 #include "usings.h"
 
@@ -20,6 +21,7 @@ public:
     }
 
     void render() {
+        integrator = make_unique<RayCastIntegrator>();
         integrator->render(scene, frame);
         frame.toPng("out.png");
     }
@@ -28,3 +30,5 @@ public:
     FrameBuffer frame;
     unique_ptr<Integrator> integrator;
 };
+
+#endif

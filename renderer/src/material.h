@@ -1,22 +1,27 @@
-#pragma once
+#ifndef MATERIAL_H
+#define MATERIAL_H
 
 #include "usings.h"
 
 class Material {
 public:
     virtual ~Material() = default;
-    vec3f albedo{};
+
+    Vec3f albedo{};
+    Vec3f debug{randf(), randf(), randf()};
 };
 
 class Lambertian : public Material {
 public:
-    explicit Lambertian(const vec3f &albedo) {
+    explicit Lambertian(const Vec3f &albedo) {
         this->albedo = albedo;
     };
 };
 
 class Emitter {
 public:
-    explicit Emitter(const vec3f &radiance) : radiance(radiance) {};
-    vec3f radiance;
+    explicit Emitter(const Vec3f &radiance) : radiance(radiance) {};
+    Vec3f radiance;
 };
+
+#endif

@@ -4,18 +4,22 @@
         "framebuffer.cpp"
         "integrator.h"
         "integrator.cpp"
+        "intersection.h"
         "material.h"
         "pathtracer.h"
         "pathtracer.cpp"
         "primitive.h"
+        "primitive.cpp"
         "ray.h"
         "renderer.h"
         "scene.h"
+        "scene.cpp"
         "sceneparser.h"
         "sceneparser.cpp"
         "shape.h"
+        "shape.cpp"
+        "tungstenmath.h"
         "usings.h")
 target_link_libraries(core
-        glm
         nlohmann_json
         pugixml)

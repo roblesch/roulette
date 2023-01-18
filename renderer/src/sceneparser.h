@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SCENEPARSER_H
+#define SCENEPARSER_H
 
 #include "usings.h"
 
@@ -31,3 +32,5 @@ public:
     static void
     FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<Integrator> &integrator, const char *filename);
 };
+
+#endif
