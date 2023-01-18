@@ -1,3 +1,11 @@
+/*
+Intersection tests for Rectangle and Quad from Benedikt Bitterli's Tungsten
+renderer - https://github.com/tunabrain/tungsten. Parameters have been renamed
+for consistency with other classes.
+
+See License.txt for tungsten's license.
+*/
+
 #include "shape.h"
 
 bool Rectangle::intersect(const Ray& ray, IntersectionPrimitive& intersection) {
