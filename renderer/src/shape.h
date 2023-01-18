@@ -66,28 +66,28 @@ public:
               const Vec3f &scale,
               const Vec3f &rot3) :
             Shape(pos, scale, rot3) {
-        _base = to_world * Vec3f(0.0f);
-        _edge0 = to_world.transformVector(Vec3f(1.0f, 0.0f, 0.0f));
-        _edge1 = to_world.transformVector(Vec3f(0.0f, 0.0f, 1.0f));
-        _base -= _edge0 * 0.5f;
-        _base -= _edge1 * 0.5f;
-        Vec3f n = _edge1.cross(_edge0);
-        _area = n.length();
-        _invArea = 1.0f / _area;
-        n /= _area;
-        _invUvSq = 1.0f / Vec2f(_edge0.lengthSq(), _edge1.lengthSq());
-        _normal = n;
+        base = to_world * Vec3f(0.0f);
+        edge0 = to_world.transformVector(Vec3f(1.0f, 0.0f, 0.0f));
+        edge1 = to_world.transformVector(Vec3f(0.0f, 0.0f, 1.0f));
+        base -= edge0 * 0.5f;
+        base -= edge1 * 0.5f;
+        Vec3f n = edge1.cross(edge0);
+        area = n.length();
+        invArea = 1.0f / area;
+        n /= area;
+        invUvSq = 1.0f / Vec2f(edge0.lengthSq(), edge1.lengthSq());
+        normal = n;
     };
 
     bool intersect(const Ray& ray, IntersectionPrimitive& intersection) override;
 
-    Vec3f _base;
-    Vec3f _edge0, _edge1;
+    Vec3f base;
+    Vec3f edge0, edge1;
     //TangentFrame _frame;
-    Vec2f _invUvSq;
-    float _area;
-    float _invArea;
-    Vec3f _normal;
+    Vec2f invUvSq;
+    float area;
+    float invArea;
+    Vec3f normal;
 };
 
 class Cube : public Shape {

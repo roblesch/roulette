@@ -21,7 +21,7 @@ public:
             primitives(std::move(prims)),
             lights(std::move(lights)) {};
 
-    void intersect(const Ray &ray, IntersectionPrimitive &intersection) const;
+    bool intersect(const Ray &ray, IntersectionPrimitive &intersection) const;
 
     Camera camera{};
     unordered_map<string, shared_ptr<Material>> materials;

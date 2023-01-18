@@ -23,4 +23,9 @@ public:
     Vec3f trace(const Scene& scene, const Vec2i& px) override;
 };
 
+class PathTracer : public Tracer {
+public:
+    Vec3f trace(const Scene& scene, const Vec2i& px) override;
+};
+
 #endif

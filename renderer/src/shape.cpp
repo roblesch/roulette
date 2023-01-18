@@ -1,18 +1,18 @@
 #include "shape.h"
 
 bool Rectangle::intersect(const Ray& ray, IntersectionPrimitive& intersection) {
-    float nDotW = ray.dir().dot(_normal);
+    float nDotW = ray.dir().dot(normal);
     if (std::abs(nDotW) < 1e-6f)
         return false;
 
-    float t = _normal.dot(_base - ray.pos()) / nDotW;
+    float t = normal.dot(base - ray.pos()) / nDotW;
     if (t < intersection.tnear || t > intersection.tfar)
         return false;
 
     Vec3f q = ray.pos() + t * ray.dir();
-    Vec3f v = q - _base;
-    float l0 = v.dot(_edge0) * _invUvSq.x();
-    float l1 = v.dot(_edge1) * _invUvSq.y();
+    Vec3f v = q - base;
+    float l0 = v.dot(edge0) * invUvSq.x();
+    float l1 = v.dot(edge1) * invUvSq.y();
 
     if (l0 < 0.0f || l0 > 1.0f || l1 < 0.0f || l1 > 1.0f)
         return false;
