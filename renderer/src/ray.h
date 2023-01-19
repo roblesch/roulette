@@ -29,6 +29,9 @@ public:
     Vec3f p;
     Vec3f d;
     float t;
+    float tnear;
+    float tfar;
+    Vec3f ng;
 };
 
 #endif
