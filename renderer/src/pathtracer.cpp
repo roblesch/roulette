@@ -1,5 +1,20 @@
 #include "pathtracer.h"
 
+struct TangentFrame {
+    explicit TangentFrame(const Vec3f& n) {
+        normal = n;
+        Vec3f tan = abs(n.x()) > abs(n.y()) ?
+            Vec3f(0.0f, 1.0f, 0.0f) :
+            Vec3f(1.0f, 0.0f, 0.0f);
+        bitangent = n.cross(tan).normalized();
+        tangent = bitangent.cross(n);
+    }
+
+    Vec3f normal{};
+    Vec3f tangent{};
+    Vec3f bitangent{};
+};
+
 Vec3f CameraDebugTracer::trace(const Scene &scene, const Vec2i &px) {
     Camera cam = scene.camera;
     int resx = cam.resx;
@@ -31,11 +46,35 @@ Vec3f PathTracer::trace(const Scene& scene, const Vec2i& px) {
 
     int bounce = 0;
     int maxBounces = 64;
-    Vec3f emission(0.0f, 0.0f, 0.0f);
+    Vec3f emission(0.0f);
+    Vec3f throughput(1.0f);
     bool hit = scene.intersect(ray, intersection);
+
+    int DimensionsPerBounce = 10;
+    int SensorDimensions = 2;
+
+    while (bounce++ < maxBounces) {
+        int dim = bounce * DimensionsPerBounce + SensorDimensions;
+        Vec3f p = ray.pos() + ray.dir() * intersection.tfar;
+        Vec3f w = -ray.dir();
+        Vec3f Ng = intersection.normal.normalized();
+
+        Primitive* prim = intersection.primitive;
+        Material* mat = intersection.material.get();
+
+        Vec3f Ns = Ng;
+
+        if (Ng.dot(w) < 0.0f) Ng = -Ng;
+        if (Ns.dot(w) < 0.0f) Ns = -Ns;
+
+        TangentFrame frame(Ns);
+
+        emission += prim->emitter.
+    }
 
     /*
     92c8882193b6baf30d8392e46db7502d18b81453
+    ... a311923a352efc0f27ab3f4df46aae2fd037c2d3
 
     dir = cam.sampleDir
     intersect ray(dir)

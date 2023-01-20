@@ -18,20 +18,20 @@ public:
         return p + d * dt;
     }
 
-    const Vec3f& pos() const {
+    [[nodiscard]] const Vec3f& pos() const {
         return p;
     }
 
-    const Vec3f& dir() const {
+    [[nodiscard]] const Vec3f& dir() const {
         return d;
     }
-
+private:
     Vec3f p;
     Vec3f d;
     float t;
-    float tnear;
-    float tfar;
-    Vec3f ng;
+    float tnear{};
+    float tfar{};
+    Vec3f ng{};
 };
 
 #endif
