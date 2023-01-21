@@ -1,9 +1,6 @@
 [submodule "renderer/ext/pugixml"]
 	path = renderer/ext/pugixml
 	url = git@github.com:roblesch/pugixml.git
-[submodule "renderer/ext/glm"]
-	path = renderer/ext/glm
-	url = git@github.com:roblesch/glm.git
 [submodule "renderer/ext/json"]
 	path = renderer/ext/json
 	url = git@github.com:roblesch/json.git
