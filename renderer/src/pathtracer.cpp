@@ -45,11 +45,6 @@ Vec3f PathTracer::trace(const Scene& scene, const Vec2i& px) {
     IntersectionData intersection;
     bool hit = scene.intersect(ray, intersection);
 
-    //if (intersection.material) {
-    //    if (intersection.primitive->emitter) return Vec3f(1.0);
-    //    else return (intersection.Ns + 1.0f).normalized();
-    //}
-
     // a311923a352efc0f27ab3f4df46aae2fd037c2d3
     int bounce = 0;
     int maxBounces = 64;
