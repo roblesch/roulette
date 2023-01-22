@@ -17,7 +17,7 @@ void PathTraceIntegrator::render(Scene &scene, FrameBuffer &frame) {
     Camera cam = scene.camera;
     int resx = cam.resx;
     int resy = cam.resy;
-    tracer = make_unique<CameraDebugTracer>();
+    tracer = make_unique<PathTracer>();
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);

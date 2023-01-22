@@ -12,6 +12,7 @@
         "primitive.cpp"
         "ray.h"
         "renderer.h"
+        "sample.h"
         "scene.h"
         "scene.cpp"
         "sceneparser.h"

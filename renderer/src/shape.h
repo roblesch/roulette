@@ -47,7 +47,8 @@ public:
         to_obj = to_world.invert();
     };
 
-    virtual bool intersect(const Ray& ray, IntersectionPrimitive& intersection) = 0;
+    virtual bool intersect(Ray& ray, IntersectionData& intersection) = 0;
+    virtual void setIntersectionData(Ray &ray, IntersectionData& intersection) = 0;
 
     Vec3f pos;
     Vec3f scale;
@@ -77,9 +78,11 @@ public:
         n /= area;
         invUvSq = 1.0f / Vec2f(edge0.lengthSq(), edge1.lengthSq());
         normal = n;
+        frame = TangentFrame(n, edge0.normalized(), edge1.normalized());
     };
 
-    bool intersect(const Ray& ray, IntersectionPrimitive& intersection) override;
+    bool intersect(Ray& ray, IntersectionData& intersection) override;
+    void setIntersectionData(Ray& ray, IntersectionData& intersection) override;
 
     Vec3f base;
     Vec3f edge0, edge1;
@@ -88,6 +91,7 @@ public:
     float area;
     float invArea;
     Vec3f normal;
+    TangentFrame frame;
 };
 
 class Cube : public Shape {
@@ -99,7 +103,8 @@ public:
          const Vec3f &rot3) :
             Shape(pos, scale*0.5f, rot3) {};
 
-    bool intersect(const Ray& ray, IntersectionPrimitive& intersection) override;
+    bool intersect(Ray& ray, IntersectionData& intersection) override;
+    void setIntersectionData(Ray &ray, IntersectionData& intersection) override;
 };
 
 #endif

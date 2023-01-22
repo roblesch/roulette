@@ -6,32 +6,57 @@
 class Ray {
 public:
     Ray() :
-        p(Vec3f(0.0f, 0.0f, 0.0f)),
-        d(Vec3f(0.0f, 0.0f, -1.0f)),
+        pos(Vec3f(0.0f, 0.0f, 0.0f)),
+        dir(Vec3f(0.0f, 0.0f, -1.0f)),
         t(0) {};
-    Ray(const Vec3f &o, const Vec3f &d) :
-            p(o),
-            d(d),
+    Ray(const Vec3f &origin, const Vec3f &direction) :
+            pos(origin),
+            dir(direction),
             t(0) {};
 
     [[nodiscard]] Vec3f at(float dt) const {
-        return p + d * dt;
+        return pos + dir * dt;
     }
 
-    [[nodiscard]] const Vec3f& pos() const {
-        return p;
+    [[nodiscard]] const Vec3f& p() const {
+        return pos;
     }
 
-    [[nodiscard]] const Vec3f& dir() const {
-        return d;
+    [[nodiscard]] const Vec3f& d() const {
+        return dir;
     }
+
+    float tnear() {
+        return tn;
+    }
+
+    float tfar() {
+        return tf;
+    }
+
+    bool isPrimary() {
+        return primary;
+    }
+
+    void tnear(float tn) {
+        this->tn = tn;
+    }
+
+    void tfar(float tf) {
+        this->tf = tf;
+    }
+
+    void setPrimary() {
+        primary = true;
+    }
+
 private:
-    Vec3f p;
-    Vec3f d;
+    Vec3f pos;
+    Vec3f dir;
     float t;
-    float tnear{};
-    float tfar{};
-    Vec3f ng{};
+    float tn = F_NEAR_ZERO;
+    float tf = F_INFTY;
+    bool primary;
 };
 
 #endif

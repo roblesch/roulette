@@ -1,19 +1,6 @@
 #include "pathtracer.h"
 
-struct TangentFrame {
-    explicit TangentFrame(const Vec3f& n) {
-        normal = n;
-        Vec3f tan = abs(n.x()) > abs(n.y()) ?
-            Vec3f(0.0f, 1.0f, 0.0f) :
-            Vec3f(1.0f, 0.0f, 0.0f);
-        bitangent = n.cross(tan).normalized();
-        tangent = bitangent.cross(n);
-    }
-
-    Vec3f normal{};
-    Vec3f tangent{};
-    Vec3f bitangent{};
-};
+#include "sample.h"
 
 Vec3f CameraDebugTracer::trace(const Scene &scene, const Vec2i &px) {
     Camera cam = scene.camera;
@@ -28,17 +15,94 @@ Vec3f CameraDebugTracer::trace(const Scene &scene, const Vec2i &px) {
 
 Vec3f IntersectionDebugTracer::trace(const Scene& scene, const Vec2i& px) {
     Camera cam = scene.camera;
-    Ray ray(cam.eye, cam.sampleDirection(px));
-    IntersectionPrimitive intersection;
+    PositionSample point;
+    DirectionSample direction;
+
+    cam.samplePosition(point);
+    cam.sampleDirection(px, direction);
+
+    Ray ray(point.p, direction.d);
+
+    IntersectionData intersection;
     scene.intersect(ray, intersection);
     if (intersection.material) {
-        return intersection.material->debug;
+        if (intersection.primitive->emitter) return Vec3f(1.0);
+        else return (intersection.Ns + 1.0f).normalized();
     }
-    return Vec3f(0.0f);
 }
 
 Vec3f PathTracer::trace(const Scene& scene, const Vec2i& px) {
     Camera cam = scene.camera;
+    PositionSample point;
+    DirectionSample direction;
+
+    cam.samplePosition(point);
+    cam.sampleDirection(px, direction);
+
+    Ray ray(point.p, direction.d);
+    ray.setPrimary();
+
+    IntersectionData intersection;
+    bool hit = scene.intersect(ray, intersection);
+
+    //if (intersection.material) {
+    //    if (intersection.primitive->emitter) return Vec3f(1.0);
+    //    else return (intersection.Ns + 1.0f).normalized();
+    //}
+
+    // a311923a352efc0f27ab3f4df46aae2fd037c2d3
+    int bounce = 0;
+    int maxBounces = 64;
+
+    while (hit && bounce < maxBounces) {
+        TangentFrame frame(intersection.Ns);
+        bool hitBack = frame.normal.dot(ray.d()) > 0.0f;
+        if (hitBack) {
+            frame.normal = -frame.normal;
+            frame.tangent = -frame.tangent;
+        }
+        Vec3f wi = frame.toLocal(-ray.d());
+
+        // lambertBsdf::sample
+        /*
+        if (wi.z <= 0.0f) return false;
+        event.wo = cosineHemisphere;
+        float pdf = cosineHemispherePdf(wo);
+        weight = albedo // 1.0f
+
+        vec3f wo = event.frame.toGlobal(event.wo)
+
+        throughput *= event.weight;
+        */
+
+        if (intersection.primitive->emitter) return Vec3f(1.0);
+        else return (intersection.Ns + 1.0f).normalized();
+
+        //surfaceEvent = makeLocalScatterEvent;
+        /*
+        TangentFrame frame = primitive->tangentFrame;
+        bool hitBackside = frame.normal.dot(dir) > 0.0f;
+        if (hitBackside) {
+            frame.normal = -frame.normal;
+            frame.tangent = -frame.tangent;
+        }
+        return SurfaceScatterEvent {
+            intersection,
+            frame,
+            wi = frame.toLocal(-ray.dir()),
+            flipFrame
+        }
+        */
+        //handleSurface(surfaceEvent, intersection, bounce, ray, throughput, emission);
+
+        bounce++;
+        if (bounce < maxBounces) {
+            hit = scene.intersect(ray, intersection);
+        }
+    }
+
+    // 92c8882193b6baf30d8392e46db7502d18b81453
+    /*
     Vec3f pos = cam.eye;
     Vec3f dir = cam.sampleDirection(px);
     Ray ray(pos, dir);
@@ -69,12 +133,12 @@ Vec3f PathTracer::trace(const Scene& scene, const Vec2i& px) {
 
         TangentFrame frame(Ns);
 
-        emission += prim->emitter.
+        //emission += prim->emitter.
     }
-
+    */
     /*
     92c8882193b6baf30d8392e46db7502d18b81453
-    ... a311923a352efc0f27ab3f4df46aae2fd037c2d3
+    ... 
 
     dir = cam.sampleDir
     intersect ray(dir)

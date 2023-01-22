@@ -5,6 +5,8 @@
 
 #include "usings.h"
 
+#include "sample.h"
+
 class Camera {
 public:
     Camera() = default;
@@ -45,13 +47,25 @@ public:
             up(up),
             transform(Mat4f::lookAt(eye, center - eye, up)) {};
 
+    void samplePosition(PositionSample& sample) {
+        sample.p = eye;
+        sample.weight = Vec3f(1.0f);
+        sample.pdf = 1.0f;
+        sample.Ng = transform.fwd();
+    }
+
     [[nodiscard]] Vec3f sampleDirection(Vec2i px) const {
         Vec3f camDir = Vec3f(
                 -1.0f + 2.0f * (float(px.x()) / float(resx)),
                 aspect - 2.0f * aspect * (float(px.y()) / float(resy)),
                 toPlane).normalized();
-        Vec3f worldDir = transform.transformVector(camDir);
-        return worldDir.normalized();
+        return transform.transformVector(camDir);
+    }
+
+    void sampleDirection(Vec2i px, DirectionSample& sample) {
+        sample.d = sampleDirection(px);
+        sample.weight = Vec3f(1.0f);
+        sample.pdf = 1.0f;
     }
 
     int resx{};
