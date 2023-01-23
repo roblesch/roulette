@@ -6,6 +6,14 @@
 #include "ray.h"
 #include "intersection.h"
 
+struct LightSample
+{
+    Vec3f d;
+    float dist;
+    float pdf;
+    //const Medium* medium;
+};
+
 class Shape {
 public:
     explicit Shape(const Mat4f &to_world) :
@@ -48,7 +56,9 @@ public:
     };
 
     virtual bool intersect(Ray& ray, IntersectionData& intersection) = 0;
-    virtual void setIntersectionData(Ray &ray, IntersectionData& intersection) = 0;
+    virtual void setIntersectionData(IntersectionData& intersection) = 0;
+    virtual bool sampleDirect(const Vec3f& p, LightSample& sample) = 0;
+    virtual float directPdf(const IntersectionData& data, const Vec3f& p) const = 0;
 
     Vec3f pos;
     Vec3f scale;
@@ -82,7 +92,14 @@ public:
     };
 
     bool intersect(Ray& ray, IntersectionData& intersection) override;
-    void setIntersectionData(Ray& ray, IntersectionData& intersection) override;
+    void setIntersectionData(IntersectionData& intersection) override;
+    bool sampleDirect(const Vec3f& p, LightSample& sample) override;
+    float directPdf(const IntersectionData& data, const Vec3f& p) const override {
+        float cosTheta = std::abs(frame.normal.dot(data.w));
+        float t = frame.normal.dot(base - p) / frame.normal.dot(data.w);
+
+        return t * t / (cosTheta * area);
+    }
 
     Vec3f base;
     Vec3f edge0, edge1;
@@ -101,10 +118,23 @@ public:
     Cube(const Vec3f &pos,
          const Vec3f &scale,
          const Vec3f &rot3) :
-            Shape(pos, scale*0.5f, rot3) {};
+            Shape(pos, scale*0.5f, rot3) {
+        Vec3f faceCdf = 4.0f * Vec3f(
+            scale.y() * scale.z(),
+            scale.z() * scale.x(),
+            scale.x() * scale.y()
+        );
+        area = 2.0f * faceCdf.z();
+    };
 
     bool intersect(Ray& ray, IntersectionData& intersection) override;
-    void setIntersectionData(Ray &ray, IntersectionData& intersection) override;
+    void setIntersectionData(IntersectionData& intersection) override;
+    bool sampleDirect(const Vec3f& p, LightSample& sample) override { return false; }
+    float directPdf(const IntersectionData& data, const Vec3f& p) const override {
+        return (p - data.p).lengthSq() / (-data.w.dot(data.Ng) * area);
+    }
+
+    float area;
 };
 
 #endif

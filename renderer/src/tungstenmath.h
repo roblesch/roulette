@@ -957,4 +957,26 @@ struct TangentFrame
     }
 };
 
+static inline float powerHeuristic(float pdf0, float pdf1)
+{
+    return (pdf0 * pdf0) / (pdf0 * pdf0 + pdf1 * pdf1);
+}
+
+static inline Vec3f cosineHemisphere(const Vec2f& xi)
+{
+    float phi = xi.x() * TWO_PI;
+    float r = std::sqrt(xi.y());
+
+    return Vec3f(
+        std::cos(phi) * r,
+        std::sin(phi) * r,
+        std::sqrt(max(1.0f - xi.y(), 0.0f))
+    );
+}
+
+static inline float cosineHemispherePdf(const Vec3f& p)
+{
+    return p.z() * INV_PI;
+}
+
 #endif

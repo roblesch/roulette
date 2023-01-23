@@ -1,7 +1,5 @@
 #include "pathtracer.h"
 
-#include "sample.h"
-
 Vec3f CameraDebugTracer::trace(const Scene &scene, const Vec2i &px) {
     Camera cam = scene.camera;
     int resx = cam.resx;
@@ -26,75 +24,307 @@ Vec3f IntersectionDebugTracer::trace(const Scene& scene, const Vec2i& px) {
     IntersectionData intersection;
     scene.intersect(ray, intersection);
     if (intersection.material) {
-        if (intersection.primitive->emitter) return Vec3f(1.0);
+        if (intersection.primitive->emissive()) return Vec3f(1.0);
         else return (intersection.Ns + 1.0f).normalized();
     }
+    return Vec3f(0.0f);
+}
+
+/* === */
+int maxBounces = 64;
+
+bool isConsistent(const SurfaceScatterEvent& event, const Vec3f& w) {
+    bool geometricBackside = (w.dot(event.data->Ng) < 0.0f);
+    bool shadingBackside = (event.wo.z() < 0.0f) ^ event.flippedFrame;
+    return geometricBackside == shadingBackside;
+}
+
+Vec3f attenuatedEmission(const shared_ptr<Primitive> light, float expectedDist, IntersectionData& data, int bounce, Ray& ray) {
+    float fudgeFactor = 1.0f + 1e-3f;
+    /*ray.tfar(expectedDist);*/
+    if (!light->intersect(ray, data) || ray.tfar() * fudgeFactor < expectedDist)
+        return Vec3f(0.0f);
+    data.p = ray.p() + ray.d() * ray.tfar();
+    data.w = ray.d();
+    light->setIntersectionData(data);
+
+    //Vec3f transmittance = generalizedShadowRay(ray, light, bounce); TODO:: shadowray
+    //if (transmittance == 0.0f)
+    //    return Vec3f(0.0f);
+    Vec3f transmittance(1.0f);
+
+    return transmittance * light->evalDirect(data);
+}
+
+Vec3f lightSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+    LightSample sample;
+    if (!light->sampleDirect(event.data->p, sample))
+        return Vec3f(0.0f);
+
+    event.wo = event.frame.toLocal(sample.d);
+    if (!isConsistent(event, sample.d))
+        return Vec3f(0.0f);
+
+    Vec3f f = event.data->material->eval(event);
+    if (f == 0.0f)
+        return Vec3f(0.0f);
+
+    Ray ray = parentRay.scatter(event.data->p, sample.d);
+    ray.setPrimary(false);
+
+    IntersectionData data;
+    Vec3f e = attenuatedEmission(light, sample.dist, data, bounce, ray);
+    if (e == 0.0f)
+        return Vec3f(0.0f);
+
+    Vec3f lightF = f * e / sample.pdf;
+    lightF *= powerHeuristic(sample.pdf, event.data->material->pdf(event));
+
+    return lightF;
+}
+
+Vec3f bsdfSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+    if (!event.data->material->sample(event))
+        return Vec3f(0.0f);
+    if (event.weight == 0.0f)
+        return Vec3f(0.0f);
+
+    Vec3f wo = event.frame.toGlobal(event.wo);
+    if (!isConsistent(event, wo))
+        return Vec3f(0.0f);
+
+    Ray ray = parentRay.scatter(event.data->p, wo);
+    ray.setPrimary(false);
+
+    IntersectionData data;
+    Vec3f e = attenuatedEmission(light, -1.0f, data, bounce, ray);
+
+    if (e == Vec3f(0.0f))
+        return Vec3f(0.0f);
+
+    Vec3f bsdfF = e * event.weight;
+    bsdfF *= powerHeuristic(event.pdf, light->directPdf(data, event.data->p));
+    return bsdfF;
+}
+
+Vec3f sampleDirect(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+    Vec3f result(0.0f);
+    result += lightSample(light, event, bounce, parentRay);
+    result += bsdfSample(light, event, bounce, parentRay);
+    return result;
+}
+
+Vec3f estimateDirect(const Scene &scene, SurfaceScatterEvent& event, int bounce, const Ray &parentRay) {
+    float weight = 1.0f;
+    const shared_ptr<Primitive> light = scene.lights.at("Light");
+    return sampleDirect(light, event, bounce, parentRay) * weight;
+}
+
+bool handleSurface(const Scene& scene, SurfaceScatterEvent& event, IntersectionData& data, int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission) {
+    Vec3f wo;
+    const shared_ptr<Material> bsdf = data.material;
+
+    if (bounce < maxBounces - 1)
+        emission += estimateDirect(scene, event, bounce + 1, ray) * throughput;
+    if (data.primitive->emissive())
+        emission += data.primitive->evalDirect(data) * throughput;
+
+    if (!bsdf->sample(event))
+        return false;
+
+    wo = event.frame.toGlobal(event.wo);
+
+    if (!isConsistent(event, wo))
+        return false;
+
+    throughput *= event.weight;
+    ray.setPrimary(false);
+
+    ray = ray.scatter(ray.p() + ray.d() * ray.tfar(), wo);
+    
+    return true;
 }
 
 Vec3f PathTracer::trace(const Scene& scene, const Vec2i& px) {
-    Camera cam = scene.camera;
     PositionSample point;
     DirectionSample direction;
+    scene.camera.samplePosition(point);
+    scene.camera.sampleDirection(px, direction);
 
-    cam.samplePosition(point);
-    cam.sampleDirection(px, direction);
-
+    Vec3f throughput = point.weight * direction.weight;
     Ray ray(point.p, direction.d);
-    ray.setPrimary();
+    ray.setPrimary(true);
 
-    IntersectionData intersection;
-    bool hit = scene.intersect(ray, intersection);
+    SurfaceScatterEvent surfaceEvent;
+    IntersectionData data;
+    Vec3f emission(0.0f);
 
-    // a311923a352efc0f27ab3f4df46aae2fd037c2d3
     int bounce = 0;
-    int maxBounces = 64;
-
+    bool hit = scene.intersect(ray, data);
     while (hit && bounce < maxBounces) {
-        TangentFrame frame(intersection.Ns);
-        bool hitBack = frame.normal.dot(ray.d()) > 0.0f;
-        if (hitBack) {
-            frame.normal = -frame.normal;
-            frame.tangent = -frame.tangent;
+        surfaceEvent = SurfaceScatterEvent(data, ray);
+        if (!handleSurface(scene, surfaceEvent, data, bounce, ray, throughput, emission))
+            break;
+
+        if (throughput.max() == 0.0f)
+            break;
+        
+        float roulettePdf = abs(throughput).max();
+        if (bounce > 2 && roulettePdf < 0.1f) {
+            if (randf() < roulettePdf)
+                throughput /= roulettePdf;
+            else
+                break;
         }
-        Vec3f wi = frame.toLocal(-ray.d());
 
-        // lambertBsdf::sample
-        /*
-        if (wi.z <= 0.0f) return false;
-        event.wo = cosineHemisphere;
-        float pdf = cosineHemispherePdf(wo);
-        weight = albedo // 1.0f
-
-        vec3f wo = event.frame.toGlobal(event.wo)
-
-        throughput *= event.weight;
-        */
-
-        if (intersection.primitive->emitter) return Vec3f(1.0);
-        else return (intersection.Ns + 1.0f).normalized();
-
-        //surfaceEvent = makeLocalScatterEvent;
-        /*
-        TangentFrame frame = primitive->tangentFrame;
-        bool hitBackside = frame.normal.dot(dir) > 0.0f;
-        if (hitBackside) {
-            frame.normal = -frame.normal;
-            frame.tangent = -frame.tangent;
-        }
-        return SurfaceScatterEvent {
-            intersection,
-            frame,
-            wi = frame.toLocal(-ray.dir()),
-            flipFrame
-        }
-        */
-        //handleSurface(surfaceEvent, intersection, bounce, ray, throughput, emission);
+        if (std::isnan(ray.d().sum() + ray.p().sum()))
+            return Vec3f(0.0f);
+        if (std::isnan(throughput.sum() + emission.sum()))
+            return Vec3f(0.0f);
 
         bounce++;
-        if (bounce < maxBounces) {
-            hit = scene.intersect(ray, intersection);
-        }
+        if (bounce < maxBounces)
+            hit = scene.intersect(ray, data);
     }
+    if (std::isnan(throughput.sum() + emission.sum()))
+        return Vec3f(0.0f);
+    return emission;
+}
+
+//Vec3f lightSample(shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+//    LightSample sample;
+//    Vec3f p = event.intersection->p;
+//    if (!light->sampleDirect(p, sample))
+//        return Vec3f(0.0f);
+//
+//    event.wo = event.frame.toLocal(sample.d);
+//
+//    Vec3f albedo = event.intersection->material->albedo;
+//
+//    // eval bsdf
+//    Vec3f f(0.0f);;
+//    if (event.wi.z() <= 0.0f || event.wo.z() <= 0.0f)
+//        f = Vec3f(0.0f);
+//    else
+//        f = albedo * INV_PI * event.wo.z();
+//    float d = INV_PI;
+//    return f;
+//    if (f == 0.0f)
+//        return Vec3f(0.0f);
+//
+//    // attenuated emission
+//    //Ray ray = parentRay.scatter(event.intersection->p, sample.d, F_NEAR_ZERO);
+//    //ray.setPrimary(false);
+//    //IntersectionData intersection;
+//    //Vec3f e(0.0f);
+//    //if (light.shape->intersect(ray, intersection)) {
+//    //    intersection.p = ray.p() + ray.d() * ray.tfar();
+//    //    intersection.w = ray.d();
+//    //    light.shape->setIntersectionData(intersection);
+//    //    Vec3f transmittance = generalizedShadowRay();
+//    //    if (transmittance != 0.0f)
+//    //        e = transmittance * light.evalDirect(data, info);
+//    //}
+//    Vec3f lightF = f / sample.pdf;
+//    lightF *= powerHeuristic(sample.pdf, event.wo.z() * INV_PI);
+//    return lightF;
+//}
+//
+//Vec3f bsdfSample(shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+//    event.wo = cosineHemisphere(Vec2f(randf(), randf()));
+//    event.pdf = cosineHemispherePdf(event.wo);
+//    event.weight = event.intersection->material->albedo;
+//
+//    Vec3f wo = event.frame.toGlobal(event.wo);
+//
+//    Vec3f bsdfF = event.weight;
+//    //bsdfF *= powerHeuristic(event.pdf, light.directPdf(intersection, event.intersection->p));
+//    return bsdfF;
+//}
+//
+//Vec3f sampleDirect(shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+//    Vec3f result(0.0f);
+//    result += lightSample(light, event, bounce, parentRay);
+//    result += bsdfSample(light, event, bounce, parentRay);
+//    return result;
+//}
+
+//Vec3f PathTracer::trace(const Scene& scene, const Vec2i& px) {
+//    Camera cam = scene.camera;
+//    PositionSample point;
+//    DirectionSample direction;
+//
+//    cam.samplePosition(point);
+//    cam.sampleDirection(px, direction);
+//
+//    Ray ray(point.p, direction.d);
+//    ray.setPrimary(true);
+//
+//    IntersectionData intersection;
+//    SurfaceScatterEvent surfaceEvent;
+//    bool hit = scene.intersect(ray, intersection);
+//
+//    // a311923a352efc0f27ab3f4df46aae2fd037c2d3
+//    int bounce = 0;
+//    int maxBounces = 2;
+//
+//    Vec3f emission(0.0f);
+//    Vec3f throughput(1.0f);
+//
+//    while (hit && bounce < maxBounces) {
+//        surfaceEvent = SurfaceScatterEvent(intersection, ray);
+//        if (bounce < maxBounces - 1) {
+//            emission += sampleDirect(scene.lights.at("Light"), surfaceEvent, bounce, ray) * throughput;
+//        }
+//
+//        surfaceEvent.wo = cosineHemisphere(Vec2f(randf(), randf()));
+//        surfaceEvent.pdf = cosineHemispherePdf(surfaceEvent.wo);
+//        surfaceEvent.weight = surfaceEvent.intersection->material->albedo;
+//        Vec3f wo = surfaceEvent.frame.toGlobal(surfaceEvent.wo);
+//        throughput *= surfaceEvent.weight;
+//        
+//        ray = ray.scatter(ray.p() + ray.d() * ray.tfar(), wo, F_NEAR_ZERO);
+//
+//        bounce++;
+//        if (bounce < maxBounces) {
+//            hit = scene.intersect(ray, intersection);
+//        }
+//    }
+//
+//    return emission;
+
+    /* handleSurface */
+/*
+if (bounce < maxBounces - 1) {
+    ** estimateDirect**
+    * light = only light
+    * result = lightSample(light)
+    * ** lightsample
+    * primitive->quad->sampleDirect(sample)
+    * wo = event.frame.toLocal(sample.d)
+    * Vec3f f = albedo*INV_PI*event.wo.z();
+    * if (f = 0.0f) return 0.0f;
+    * ray = parentRay.scatter();
+    * ray.setPrimaryRay(false);
+    * Vec3f e = attenuatedEmission
+    *
+}
+if (intersection.primitive->emissive()) {
+    //emission += info.primitive->evalDirect(data, info)*throughput;
+}
+
+** bsdf.sample **
+* if wi.z() <= 0.0f break;
+* wo = cosineHemisphere(random 2d sample);
+* pdf = cosineHemispherePdf(wo); => wo.z()*INV_PI
+* weight = material->albedo
+* weight *= sqr(eta(event)) // eta is always 1
+*
+
+Vec3f wo = frame.toGlobal(wo);
+throughput *= weight;
+ray = ray.scatter(ray.hitpoint(), wo, epsilon);
+*/
 
     // 92c8882193b6baf30d8392e46db7502d18b81453
     /*
@@ -209,5 +439,5 @@ Vec3f PathTracer::trace(const Scene& scene, const Vec2i& px) {
         intersect(ray)
     */
 
-    return Vec3f(0.0f);
-}
+//    return Vec3f(0.0f);
+//}

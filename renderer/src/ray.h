@@ -14,6 +14,15 @@ public:
             dir(direction),
             t(0) {};
 
+    Ray scatter(const Vec3f& newP, const Vec3f& newD, float newTnear = F_NEAR_ZERO, float newTfar = F_INFTY) const {
+        Ray ray(*this);
+        ray.pos = newP;
+        ray.dir = newD;
+        ray.tn = newTnear;
+        ray.tf = newTfar;
+        return ray;
+    }
+
     [[nodiscard]] Vec3f at(float dt) const {
         return pos + dir * dt;
     }
@@ -46,8 +55,8 @@ public:
         this->tf = tf;
     }
 
-    void setPrimary() {
-        primary = true;
+    void setPrimary(bool isP) {
+        this->primary = isP;
     }
 
 private:

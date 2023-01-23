@@ -5,7 +5,18 @@
 
 #include "usings.h"
 
-#include "sample.h"
+struct PositionSample {
+    Vec3f p;
+    Vec3f weight;
+    float pdf;
+    Vec3f Ng;
+};
+
+struct DirectionSample {
+    Vec3f d;
+    Vec3f weight;
+    float pdf;
+};
 
 class Camera {
 public:
@@ -47,7 +58,7 @@ public:
             up(up),
             transform(Mat4f::lookAt(eye, center - eye, up)) {};
 
-    void samplePosition(PositionSample& sample) {
+    void samplePosition(PositionSample& sample) const {
         sample.p = eye;
         sample.weight = Vec3f(1.0f);
         sample.pdf = 1.0f;
@@ -62,7 +73,7 @@ public:
         return transform.transformVector(camDir);
     }
 
-    void sampleDirection(Vec2i px, DirectionSample& sample) {
+    void sampleDirection(Vec2i px, DirectionSample& sample) const {
         sample.d = sampleDirection(px);
         sample.weight = Vec3f(1.0f);
         sample.pdf = 1.0f;

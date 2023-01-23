@@ -27,10 +27,6 @@ bool Rectangle::intersect(Ray& ray, IntersectionData& intersection) {
     return true;
 }
 
-void Rectangle::setIntersectionData(Ray &ray, IntersectionData& intersection) {
-    intersection.Ng = intersection.Ns = frame.normal;
-}
-
 bool Cube::intersect(Ray& ray, IntersectionData& intersection) {
     Vec3f p = invRot * (ray.p() - pos);
     Vec3f d = invRot * ray.d();
@@ -64,11 +60,31 @@ bool Cube::intersect(Ray& ray, IntersectionData& intersection) {
     return false;
 }
 
-void Cube::setIntersectionData(Ray& ray, IntersectionData& intersection) {
+void Rectangle::setIntersectionData(IntersectionData& intersection) {
+    intersection.Ng = intersection.Ns = frame.normal;
+}
+
+void Cube::setIntersectionData(IntersectionData& intersection) {
     Vec3f p = invRot * (intersection.p - pos);
     Vec3f n(0.0f);
     int dim = (abs(p) - scale).maxDim();
     n[dim] = p[dim] < 0.0f ? -1.0f : 1.0f;
     intersection.Ns = intersection.Ng = rot4 * n;
     return;
+}
+
+bool Rectangle::sampleDirect(const Vec3f& p, LightSample& sample) {
+    if (frame.normal.dot(p - base) <= 0.0f)
+        return false;
+
+    Vec2f xi(randf(), randf());
+    Vec3f q = base + xi.x() * edge0 + xi.y() * edge1;
+    sample.d = q - p;
+    float rSq = sample.d.lengthSq();
+    sample.dist = std::sqrt(rSq);
+    sample.d /= sample.dist;
+    float cosTheta = -frame.normal.dot(sample.d);
+    sample.pdf = rSq / (cosTheta * area);
+
+    return true;
 }
