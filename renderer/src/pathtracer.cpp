@@ -39,7 +39,25 @@ bool isConsistent(const SurfaceScatterEvent& event, const Vec3f& w) {
     return geometricBackside == shadingBackside;
 }
 
-Vec3f attenuatedEmission(const shared_ptr<Primitive> light, float expectedDist, IntersectionData& data, int bounce, Ray& ray) {
+Vec3f generalizedShadowRay(const Scene& scene, Ray &ray, const shared_ptr<Primitive> light, int bounce) {
+    IntersectionData data;
+    float tfar_i = ray.tfar();
+    Vec3f throughput(1.0f);
+    do {
+        bool hit = scene.intersect(ray, data) && data.primitive != &(*light);
+        if (hit) {
+            return Vec3f(0.0f);
+        }
+        if (data.primitive == nullptr || data.primitive == &(*light))
+            return throughput;
+        tfar_i -= ray.tfar();
+        ray = Ray(ray.p() + ray.d() * ray.tfar(), ray.d());
+        ray.tfar(tfar_i);
+    } while(true);
+    return Vec3f(1.0f);
+}
+
+Vec3f attenuatedEmission(const Scene& scene, const shared_ptr<Primitive> light, float expectedDist, IntersectionData& data, int bounce, Ray& ray) {
     float fudgeFactor = 1.0f + 1e-3f;
     /*ray.tfar(expectedDist);*/
     if (!light->intersect(ray, data) || ray.tfar() * fudgeFactor < expectedDist)
@@ -48,15 +66,14 @@ Vec3f attenuatedEmission(const shared_ptr<Primitive> light, float expectedDist, 
     data.w = ray.d();
     light->setIntersectionData(data);
 
-    //Vec3f transmittance = generalizedShadowRay(ray, light, bounce); TODO:: shadowray
-    //if (transmittance == 0.0f)
-    //    return Vec3f(0.0f);
-    Vec3f transmittance(1.0f);
+    Vec3f transmittance = generalizedShadowRay(scene, ray, light, bounce); //TODO:: shadowray
+    if (transmittance == 0.0f)
+        return Vec3f(0.0f);
 
     return transmittance * light->evalDirect(data);
 }
 
-Vec3f lightSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+Vec3f lightSample(const Scene& scene, const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
     LightSample sample;
     if (!light->sampleDirect(event.data->p, sample))
         return Vec3f(0.0f);
@@ -73,7 +90,7 @@ Vec3f lightSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event,
     ray.setPrimary(false);
 
     IntersectionData data;
-    Vec3f e = attenuatedEmission(light, sample.dist, data, bounce, ray);
+    Vec3f e = attenuatedEmission(scene, light, sample.dist, data, bounce, ray);
     if (e == 0.0f)
         return Vec3f(0.0f);
 
@@ -83,7 +100,7 @@ Vec3f lightSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event,
     return lightF;
 }
 
-Vec3f bsdfSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+Vec3f bsdfSample(const Scene& scene, const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
     if (!event.data->material->sample(event))
         return Vec3f(0.0f);
     if (event.weight == 0.0f)
@@ -97,7 +114,7 @@ Vec3f bsdfSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, 
     ray.setPrimary(false);
 
     IntersectionData data;
-    Vec3f e = attenuatedEmission(light, -1.0f, data, bounce, ray);
+    Vec3f e = attenuatedEmission(scene, light, -1.0f, data, bounce, ray);
 
     if (e == Vec3f(0.0f))
         return Vec3f(0.0f);
@@ -107,17 +124,17 @@ Vec3f bsdfSample(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, 
     return bsdfF;
 }
 
-Vec3f sampleDirect(const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
+Vec3f sampleDirect(const Scene &scene, const shared_ptr<Primitive> light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
     Vec3f result(0.0f);
-    result += lightSample(light, event, bounce, parentRay);
-    result += bsdfSample(light, event, bounce, parentRay);
+    result += lightSample(scene, light, event, bounce, parentRay);
+    result += bsdfSample(scene, light, event, bounce, parentRay);
     return result;
 }
 
 Vec3f estimateDirect(const Scene &scene, SurfaceScatterEvent& event, int bounce, const Ray &parentRay) {
     float weight = 1.0f;
     const shared_ptr<Primitive> light = scene.lights.at("Light");
-    return sampleDirect(light, event, bounce, parentRay) * weight;
+    return sampleDirect(scene, light, event, bounce, parentRay) * weight;
 }
 
 bool handleSurface(const Scene& scene, SurfaceScatterEvent& event, IntersectionData& data, int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission) {

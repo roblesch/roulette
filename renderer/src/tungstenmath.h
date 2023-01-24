@@ -979,4 +979,10 @@ static inline float cosineHemispherePdf(const Vec3f& p)
     return p.z() * INV_PI;
 }
 
+template<typename T>
+T clamp(T val, T minVal, T maxVal)
+{
+    return min(max(val, minVal), maxVal);
+}
+
 #endif
