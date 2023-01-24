@@ -3,7 +3,7 @@ set (CMAKE_CXX_STANDARD 20)
 
 project("renderer")
 
-if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/glm/CMakeLists.txt")
+if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/json/CMakeLists.txt")
     message(FATAL_ERROR "Clone submodules
         $ git submodule update --init --recursive")
 endif()

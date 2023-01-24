@@ -883,6 +883,15 @@ static inline Vec3f operator*(const Mat4f &a, const Vec3f &b) {
     };
 }
 
+template<typename ElementType, unsigned Size>
+Vec<ElementType, Size> abs(const Vec<ElementType, Size>& t)
+{
+    Vec<ElementType, Size> result;
+    for (unsigned i = 0; i < Size; ++i)
+        result[i] = std::abs(t[i]);
+    return result;
+}
+
 /* MathUtil.hpp */
 
 template<typename T>
@@ -907,6 +916,73 @@ template<typename T, typename... Ts>
 T max(const T& a, const T& b, const Ts &... ts)
 {
     return max(max(a, b), ts...);
+}
+
+/* TangentFrame.hpp */
+
+struct TangentFrame
+{
+    Vec3f normal, tangent, bitangent;
+
+    TangentFrame() = default;
+
+    TangentFrame(const Vec3f& n, const Vec3f& t, const Vec3f& b)
+        : normal(n), tangent(t), bitangent(b)
+    {
+    }
+
+    TangentFrame(const Vec3f& n)
+        : normal(n)
+    {
+        if (std::abs(normal.x()) > std::abs(normal.y()))
+            tangent = Vec3f(0.0f, 1.0f, 0.0f);
+        else
+            tangent = Vec3f(1.0f, 0.0f, 0.0f);
+        bitangent = normal.cross(tangent).normalized();
+        tangent = bitangent.cross(normal);
+    }
+
+    Vec3f toLocal(const Vec3f& p) const
+    {
+        return Vec3f(
+            tangent.dot(p),
+            bitangent.dot(p),
+            normal.dot(p)
+        );
+    }
+
+    Vec3f toGlobal(const Vec3f& p) const
+    {
+        return tangent * p.x() + bitangent * p.y() + normal * p.z();
+    }
+};
+
+static inline float powerHeuristic(float pdf0, float pdf1)
+{
+    return (pdf0 * pdf0) / (pdf0 * pdf0 + pdf1 * pdf1);
+}
+
+static inline Vec3f cosineHemisphere(const Vec2f& xi)
+{
+    float phi = xi.x() * TWO_PI;
+    float r = std::sqrt(xi.y());
+
+    return Vec3f(
+        std::cos(phi) * r,
+        std::sin(phi) * r,
+        std::sqrt(max(1.0f - xi.y(), 0.0f))
+    );
+}
+
+static inline float cosineHemispherePdf(const Vec3f& p)
+{
+    return p.z() * INV_PI;
+}
+
+template<typename T>
+T clamp(T val, T minVal, T maxVal)
+{
+    return min(max(val, minVal), maxVal);
 }
 
 #endif

@@ -21,7 +21,6 @@ public:
     }
 
     void render() {
-        integrator = make_unique<RayCastIntegrator>();
         integrator->render(scene, frame);
         frame.toPng("out.png");
     }

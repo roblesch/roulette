@@ -6,29 +6,66 @@
 class Ray {
 public:
     Ray() :
-        p(Vec3f(0.0f, 0.0f, 0.0f)),
-        d(Vec3f(0.0f, 0.0f, -1.0f)),
+        pos(Vec3f(0.0f, 0.0f, 0.0f)),
+        dir(Vec3f(0.0f, 0.0f, -1.0f)),
         t(0) {};
-    Ray(const Vec3f &o, const Vec3f &d) :
-            p(o),
-            d(d),
+    Ray(const Vec3f &origin, const Vec3f &direction) :
+            pos(origin),
+            dir(direction),
             t(0) {};
 
+    Ray scatter(const Vec3f& newP, const Vec3f& newD, float newTnear = F_NEAR_ZERO, float newTfar = F_INFTY) const {
+        Ray ray(*this);
+        ray.pos = newP;
+        ray.dir = newD;
+        ray.tn = newTnear;
+        ray.tf = newTfar;
+        return ray;
+    }
+
     [[nodiscard]] Vec3f at(float dt) const {
-        return p + d * dt;
+        return pos + dir * dt;
     }
 
-    const Vec3f& pos() const {
-        return p;
+    [[nodiscard]] const Vec3f& p() const {
+        return pos;
     }
 
-    const Vec3f& dir() const {
-        return d;
+    [[nodiscard]] const Vec3f& d() const {
+        return dir;
     }
 
-    Vec3f p;
-    Vec3f d;
+    float tnear() {
+        return tn;
+    }
+
+    float tfar() {
+        return tf;
+    }
+
+    bool isPrimary() {
+        return primary;
+    }
+
+    void tnear(float tn) {
+        this->tn = tn;
+    }
+
+    void tfar(float tf) {
+        this->tf = tf;
+    }
+
+    void setPrimary(bool isP) {
+        this->primary = isP;
+    }
+
+private:
+    Vec3f pos;
+    Vec3f dir;
     float t;
+    float tn = F_NEAR_ZERO;
+    float tf = F_INFTY;
+    bool primary;
 };
 
 #endif

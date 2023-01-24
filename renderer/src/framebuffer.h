@@ -28,6 +28,8 @@ public:
 
     Vec4c Rgba(Vec2i px) { return Rgba(px.y() * resx + px.x()); }
 
+    inline Vec3f getLinear(int x, int y);
+
     void toPpm(const char *filename);
 
     void toPng(const char *filename);
@@ -35,6 +37,7 @@ public:
     int resx{};
     int resy{};
     vector<Vec3f> buf;
+    vector<float> luminance;
     vector<Vec3c> rgbBuf;
 };
 

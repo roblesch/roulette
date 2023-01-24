@@ -28,4 +28,4 @@ https://github.com/Twinklebear/ChameleonRT
 
 https://github.com/RayTracing/raytracing.github.io
 
-Thank you to [Benedikt Bitterli](https://benedikt-bitterli.me/resources/) for making freely available the assets used in this project. Benedikt's [Tungsten Renderer](https://github.com/tunabrain/tungsten) provides an excellent resource for reference implementations and debugging.
+Thank you to [Benedikt Bitterli](https://benedikt-bitterli.me/resources/) for making freely available the scene assets and Path Tracing algorithms used in this project. Benedikt's [Tungsten Renderer](https://github.com/tunabrain/tungsten) provides an excellent resource for reference implementations and debugging, and his implementations of geometric primitives and various algorithms are the foundation for the renderer that this project uses to explore techniques in Russian Roulette & Splitting.

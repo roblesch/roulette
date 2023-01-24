@@ -5,6 +5,19 @@
 
 #include "usings.h"
 
+struct PositionSample {
+    Vec3f p;
+    Vec3f weight;
+    float pdf;
+    Vec3f Ng;
+};
+
+struct DirectionSample {
+    Vec3f d;
+    Vec3f weight;
+    float pdf;
+};
+
 class Camera {
 public:
     Camera() = default;
@@ -45,13 +58,25 @@ public:
             up(up),
             transform(Mat4f::lookAt(eye, center - eye, up)) {};
 
+    void samplePosition(PositionSample& sample) const {
+        sample.p = eye;
+        sample.weight = Vec3f(1.0f);
+        sample.pdf = 1.0f;
+        sample.Ng = transform.fwd();
+    }
+
     [[nodiscard]] Vec3f sampleDirection(Vec2i px) const {
         Vec3f camDir = Vec3f(
                 -1.0f + 2.0f * (float(px.x()) / float(resx)),
                 aspect - 2.0f * aspect * (float(px.y()) / float(resy)),
                 toPlane).normalized();
-        Vec3f worldDir = transform.transformVector(camDir);
-        return worldDir.normalized();
+        return transform.transformVector(camDir);
+    }
+
+    void sampleDirection(Vec2i px, DirectionSample& sample) const {
+        sample.d = sampleDirection(px);
+        sample.weight = Vec3f(1.0f);
+        sample.pdf = 1.0f;
     }
 
     int resx{};
