@@ -1,14 +1,16 @@
 #include "scene.h"
 
-bool Scene::intersect(Ray &ray, IntersectionData &intersection) const {
+bool Scene::intersect(Ray &ray, IntersectionData &data) const {
+    data.primitive = nullptr;
+    data.material = nullptr;
     for (const auto& pair : primitives) {
-        pair.second->intersect(ray, intersection);
+        pair.second->intersect(ray, data);
     }
-    if (intersection.primitive) {
-        intersection.p = ray.p() + ray.d() * ray.tfar();
-        intersection.w = ray.d();
-        intersection.primitive->setIntersectionData(intersection);
-        intersection.material = intersection.primitive->material;
+    if (data.primitive) {
+        data.p = ray.p() + ray.d() * ray.tfar();
+        data.w = ray.d();
+        data.primitive->setIntersectionData(data);
+        data.material = data.primitive->material;
         return true;
     }
     return false;
