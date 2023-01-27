@@ -55,10 +55,8 @@ public:
         to_obj = to_world.invert();
     };
 
-    virtual bool intersect(Ray& ray, IntersectionData& intersection) = 0;
-    virtual void setIntersectionData(IntersectionData& intersection) = 0;
-    virtual bool sampleDirect(const Vec3f& p, LightSample& sample) = 0;
-    virtual float directPdf(const IntersectionData& data, const Vec3f& p) const = 0;
+    virtual bool intersect(Ray& ray, Intersection& intersection) const = 0;
+    virtual void setIntersectionData(Intersection& intersection, IntersectionData& data) const = 0;
 
     Vec3f pos;
     Vec3f scale;
@@ -91,15 +89,8 @@ public:
         frame = TangentFrame(n, edge0.normalized(), edge1.normalized());
     };
 
-    bool intersect(Ray& ray, IntersectionData& intersection) override;
-    void setIntersectionData(IntersectionData& intersection) override;
-    bool sampleDirect(const Vec3f& p, LightSample& sample) override;
-    float directPdf(const IntersectionData& data, const Vec3f& p) const override {
-        float cosTheta = std::abs(frame.normal.dot(data.w));
-        float t = frame.normal.dot(base - p) / frame.normal.dot(data.w);
-
-        return t * t / (cosTheta * area);
-    }
+    bool intersect(Ray& ray, Intersection& intersection) const override;
+    void setIntersectionData(Intersection& intersection, IntersectionData& data) const override;
 
     Vec3f base;
     Vec3f edge0, edge1;
@@ -127,12 +118,8 @@ public:
         area = 2.0f * faceCdf.z();
     };
 
-    bool intersect(Ray& ray, IntersectionData& intersection) override;
-    void setIntersectionData(IntersectionData& intersection) override;
-    bool sampleDirect(const Vec3f& p, LightSample& sample) override { return false; }
-    float directPdf(const IntersectionData& data, const Vec3f& p) const override {
-        return (p - data.p).lengthSq() / (-data.w.dot(data.Ng) * area);
-    }
+    bool intersect(Ray& ray, Intersection& intersection) const override;
+    void setIntersectionData(Intersection &intersection, IntersectionData &data) const override;
 
     float area;
 };

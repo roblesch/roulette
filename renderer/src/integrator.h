@@ -4,7 +4,7 @@
 #include "usings.h"
 
 #include "framebuffer.h"
-#include "pathtracer.h"
+#include "tracer.h"
 #include "scene.h"
 
 class Integrator {

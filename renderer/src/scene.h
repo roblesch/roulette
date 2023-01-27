@@ -21,7 +21,21 @@ public:
             primitives(std::move(prims)),
             lights(std::move(lights)) {};
 
-    bool intersect(Ray &ray, IntersectionData &intersection) const;
+    bool intersect(Ray& ray, Intersection& intersection, IntersectionData& data) const {
+        intersection.primitive = nullptr;
+        data.primitive = nullptr;
+        for (const auto& pair : primitives) {
+            pair.second->intersect(ray, intersection);
+        }
+        if (intersection.primitive) {
+            data.p = ray.p() + ray.d() * ray.tfar();
+            data.w = ray.d();
+            data.epsilon = F_NEAR_ZERO;
+            intersection.primitive->setIntersectionData(intersection, data);
+            return true;
+        }
+        return false;
+    }
 
     Camera camera{};
     unordered_map<string, shared_ptr<Material>> materials;

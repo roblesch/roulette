@@ -6,14 +6,15 @@
         "integrator.cpp"
         "intersection.h"
         "material.h"
-        "pathtracer.h"
+        "tracer.h"
         "pathtracer.cpp"
         "primitive.h"
-        "primitive.cpp"
+        
         "ray.h"
+        "raytracer.cpp"
         "renderer.h"
         "scene.h"
-        "scene.cpp"
+        
         "sceneparser.h"
         "sceneparser.cpp"
         "shape.h"

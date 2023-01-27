@@ -11,9 +11,6 @@ public:
 
     Vec3f albedo{};
     Vec3f debug{randf(), randf(), randf()};
-    virtual Vec3f eval(const SurfaceScatterEvent &event) const = 0;
-    virtual float pdf(const SurfaceScatterEvent& event) const = 0;
-    virtual bool sample(SurfaceScatterEvent& event) const = 0;
 };
 
 class Lambertian : public Material {
@@ -21,25 +18,6 @@ public:
     explicit Lambertian(const Vec3f &albedo) {
         this->albedo = albedo;
     };
-    Vec3f eval(const SurfaceScatterEvent& event) const override {
-        if (event.wi.z() <= 0.0f || event.wo.z() <= 0.0f)
-            return Vec3f(0.0f);
-        return albedo * INV_PI * event.wo.z();
-    }
-    float pdf(const SurfaceScatterEvent& event) const override {
-        if (event.wi.z() <= 0.0f || event.wo.z() <= 0.0f)
-            return 0.0f;
-        return cosineHemispherePdf(event.wo);
-    }
-    bool sample(SurfaceScatterEvent& event) const override {
-        if (event.wi.z() <= 0.0f)
-            return false;
-        Vec2f xi(randf(), randf());
-        event.wo = cosineHemisphere(xi);
-        event.pdf = cosineHemispherePdf(event.wo);
-        event.weight = albedo;
-        return true;
-    }
 };
 
 class Emitter {

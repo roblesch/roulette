@@ -34,6 +34,10 @@ public:
     [[nodiscard]] const Vec3f& d() const {
         return dir;
     }
+    
+    [[nodiscard]] const Vec3f& tip() const {
+        return pos + dir * tf;
+    }
 
     float tnear() {
         return tn;

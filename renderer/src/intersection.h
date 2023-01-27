@@ -8,17 +8,40 @@
 class Primitive;
 class Material;
 
-struct IntersectionData {
-    Primitive *primitive = nullptr;
-    shared_ptr<Material> material;
-    bool front;
-    float tnear = F_NEAR_ZERO;
-    float tfar = F_INFTY;
-    Vec3f normal;
+struct Intersection
+{
+    const Primitive* primitive;
+    Vec3f p;
+    bool backface;
+    uint8 data[64];
+
+    Intersection() = default;
+
+    template<typename T>
+    T* as()
+    {
+        static_assert(sizeof(T) <= sizeof(data), "Exceeding size of intersection temporary");
+        return reinterpret_cast<T*>(&data[0]);
+    }
+    template<typename T>
+    const T* as() const
+    {
+        static_assert(sizeof(T) <= sizeof(data), "Exceeding size of intersection temporary");
+        return reinterpret_cast<const T*>(&data[0]);
+    }
+};
+
+struct IntersectionData
+{
+    Vec3f Ng;
+    Vec3f Ns;
     Vec3f p;
     Vec3f w;
-    Vec3f Ns;
-    Vec3f Ng;
+    Vec2f uv;
+    float epsilon;
+    bool backSide;
+
+    const Primitive* primitive;
 };
 
 struct SurfaceScatterEvent
