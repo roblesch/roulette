@@ -27,7 +27,7 @@ class PathTracer : public Tracer {
 public:
     Vec3f trace(const Scene& scene, const Vec2i& px) override;
     bool handleSurface(SurfaceScatterEvent& event, Intersection& intersection, IntersectionData& data,
-        int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission);
+        int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission, bool& wasSpecular);
     Vec3f estimateDirect(SurfaceScatterEvent& event, int bounce, const Ray& parentRay);
     Vec3f sampleDirect(const Primitive& light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay);
     Vec3f lightSample(const Primitive& light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay);

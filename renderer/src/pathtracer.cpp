@@ -143,7 +143,7 @@ Vec3f PathTracer::estimateDirect(SurfaceScatterEvent& event, int bounce, const R
 }
 
 bool PathTracer::handleSurface(SurfaceScatterEvent& event, Intersection& intersection, IntersectionData& data,
-    int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission) {
+    int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission, bool &wasSpecular) {
     // bsdf = data->primitive->material;
 
     Vec3f wo;
@@ -189,12 +189,13 @@ Vec3f PathTracer::trace(const Scene& input, const Vec2i& px) {
     SurfaceScatterEvent surfaceEvent;
     Vec3f emission(0.0f);
     Vec3f throughput(1.0f);
+    bool wasSpecular = true;
     int bounce = 0;
 
     bool hit = scene->intersect(ray, intersection, data);
     while (hit && bounce < maxBounces) {
         surfaceEvent = makeLocalScatterEvent(intersection, data, ray);
-        if (!handleSurface(surfaceEvent, intersection, data, bounce, ray, throughput, emission))
+        if (!handleSurface(surfaceEvent, intersection, data, bounce, ray, throughput, emission, wasSpecular))
             break;
 
         if (throughput.max() == 0.0f)
