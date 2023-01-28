@@ -21,7 +21,7 @@ public:
         return this;
     }
     bool emissive() const { return emitter ? true : false; }
-    bool intersect(Ray& ray, Intersection& intersection) {
+    bool intersect(Ray& ray, Intersection& intersection) const {
         if (shape->intersect(ray, intersection)) {
             intersection.primitive = this;
             return true;
@@ -31,6 +31,20 @@ public:
     void setIntersectionData(Intersection &intersection, IntersectionData &data) const {
         shape->setIntersectionData(intersection, data);
         data.primitive = this;
+    }
+    bool sampleLightDirect(const Vec3f& p, LightSample& sample) const {
+        return shape->sampleDirect(p, sample);
+    }
+    Vec3f evalBsdf(const SurfaceScatterEvent& event) const {
+        return material->eval(event);
+    }
+    float bsdfPdf(const SurfaceScatterEvent& event) const {
+        return material->pdf(event);
+    }
+    Vec3f evalEmissionDirect(const Intersection& intersection, const IntersectionData& data) const {
+        if (!emissive())
+            return Vec3f(0.0f);
+        return emitter->radiance;
     }
 
     shared_ptr<Shape> shape;

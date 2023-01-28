@@ -6,14 +6,6 @@
 #include "ray.h"
 #include "intersection.h"
 
-struct LightSample
-{
-    Vec3f d;
-    float dist;
-    float pdf;
-    //const Medium* medium;
-};
-
 class Shape {
 public:
     explicit Shape(const Mat4f &to_world) :
@@ -57,6 +49,7 @@ public:
 
     virtual bool intersect(Ray& ray, Intersection& intersection) const = 0;
     virtual void setIntersectionData(Intersection& intersection, IntersectionData& data) const = 0;
+    virtual bool sampleDirect(const Vec3f& p, LightSample& sample) const = 0;
 
     Vec3f pos;
     Vec3f scale;
@@ -91,6 +84,21 @@ public:
 
     bool intersect(Ray& ray, Intersection& intersection) const override;
     void setIntersectionData(Intersection& intersection, IntersectionData& data) const override;
+    bool sampleDirect(const Vec3f& p, LightSample& sample) const override {
+        if (frame.normal.dot(p - base) <= 0.0f)
+            return false;
+
+        Vec2f xi(randf(), randf());
+        Vec3f q = base + xi.x() * edge0 + xi.y() * edge1;
+        sample.d = q - p;
+        float rSq = sample.d.lengthSq();
+        sample.dist = std::sqrt(rSq);
+        sample.d /= sample.dist;
+        float cosTheta = -frame.normal.dot(sample.d);
+        sample.pdf = rSq / (cosTheta * area);
+
+        return true;
+    }
 
     Vec3f base;
     Vec3f edge0, edge1;
@@ -120,6 +128,7 @@ public:
 
     bool intersect(Ray& ray, Intersection& intersection) const override;
     void setIntersectionData(Intersection &intersection, IntersectionData &data) const override;
+    bool sampleDirect(const Vec3f& p, LightSample& sample) const { return false; }
 
     float area;
 };

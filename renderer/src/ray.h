@@ -14,12 +14,12 @@ public:
             dir(direction),
             t(0) {};
 
-    Ray scatter(const Vec3f& newP, const Vec3f& newD, float newTnear = F_NEAR_ZERO, float newTfar = F_INFTY) const {
-        Ray ray(*this);
-        ray.pos = newP;
-        ray.dir = newD;
-        ray.tn = newTnear;
-        ray.tf = newTfar;
+    Ray scatter(const Vec3f& newPos, const Vec3f& newDir, float newNearT, float newFarT = F_INFTY) const {
+        Ray ray;
+        ray.pos = newPos;
+        ray.dir = newDir;
+        ray.tn = newNearT;
+        ray.tf = newFarT;
         return ray;
     }
 
@@ -29,6 +29,10 @@ public:
 
     [[nodiscard]] const Vec3f& p() const {
         return pos;
+    }
+
+    void setP(const Vec3f& newP) {
+        pos = newP;
     }
 
     [[nodiscard]] const Vec3f& d() const {

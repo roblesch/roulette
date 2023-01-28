@@ -28,6 +28,13 @@ public:
     Vec3f trace(const Scene& scene, const Vec2i& px) override;
     bool handleSurface(SurfaceScatterEvent& event, Intersection& intersection, IntersectionData& data,
         int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission);
+    Vec3f estimateDirect(SurfaceScatterEvent& event, int bounce, const Ray& parentRay);
+    Vec3f sampleDirect(const Primitive& light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay);
+    Vec3f lightSample(const Primitive& light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay);
+    Vec3f bsdfSample(const Primitive& light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay);
+    Vec3f attenuatedEmission(const Primitive& light, float expectedDist, Intersection& intersection, IntersectionData& data, int bounce, Ray& ray);
+    Vec3f generalizedShadowRay(Ray& ray, const Primitive* endCap, int bounce) const;
+    inline Vec3f generalizedShadowRayImpl(Ray& ray, const Primitive* endCap, int bounce, bool startsOnSurface, bool endsOnSurface, float& pdfForward, float& pdfBackward) const;
     SurfaceScatterEvent makeLocalScatterEvent(Intersection& intersection, IntersectionData& data, Ray& ray) const {
         TangentFrame frame(data.Ns);
 

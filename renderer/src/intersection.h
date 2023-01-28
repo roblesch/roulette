@@ -8,6 +8,13 @@
 class Primitive;
 class Material;
 
+struct LightSample
+{
+    Vec3f d;
+    float dist;
+    float pdf;
+};
+
 struct Intersection
 {
     const Primitive* primitive;
