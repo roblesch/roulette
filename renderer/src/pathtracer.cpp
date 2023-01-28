@@ -19,10 +19,9 @@ inline Vec3f PathTracer::generalizedShadowRayImpl(Ray& ray,
         if (didHit) {
             SurfaceScatterEvent event = makeLocalScatterEvent(intersection, data, ray);
 
-            // For forward events, the transport direction does not matter (since wi = -wo)
-            //Vec3f transparency = info.bsdf->eval(event.makeForwardEvent(), false);
-            //if (transparency == 0.0f)
-            //    return Vec3f(0.0f);
+            Vec3f transparency = data.primitive->evalBsdf(event.makeForwardEvent());
+            if (transparency == 0.0f)
+                return Vec3f(0.0f);
 
             //if (ComputePdfs) {
             //    float transparencyScalar = transparency.avg();
@@ -30,7 +29,7 @@ inline Vec3f PathTracer::generalizedShadowRayImpl(Ray& ray,
             //    pdfBackward *= transparencyScalar;
             //}
 
-            //throughput *= transparency;
+            throughput *= transparency;
             bounce++;
 
             if (bounce >= maxBounces)
@@ -58,6 +57,7 @@ Vec3f PathTracer::attenuatedEmission(const Primitive& light, float expectedDist,
 
     if (!light.intersect(ray, intersection) || ray.tfar() * fudgeFactor < expectedDist)
         return Vec3f(0.0f);
+    //return Vec3f(1.0f);
     data.p = ray.p() + ray.d() * ray.tfar();
     data.w = ray.d();
     light.setIntersectionData(intersection, data);
@@ -65,13 +65,11 @@ Vec3f PathTracer::attenuatedEmission(const Primitive& light, float expectedDist,
     Vec3f transmittance = generalizedShadowRay(ray, &light, bounce);
     if (transmittance == 0.0f)
         return Vec3f(0.0f);
-    //Vec3f transmittance(1.0f);
 
     return transmittance * light.evalEmissionDirect(intersection, data);
 }
 
 Vec3f PathTracer::bsdfSample(const Primitive& light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
-    //event.requestedLobe = BsdfLobes::AllButSpecular;
     if (!event.data->primitive->sampleBsdf(event))
         return Vec3f(0.0f);
     if (event.weight == 0.0f)
@@ -130,7 +128,7 @@ Vec3f PathTracer::lightSample(const Primitive& light, SurfaceScatterEvent& event
 Vec3f PathTracer::sampleDirect(const Primitive& light, SurfaceScatterEvent& event, int bounce, const Ray& parentRay) {
     Vec3f result(0.0f);
     result += lightSample(light, event, bounce, parentRay);
-    result += bsdfSample(light, event, bounce, parentRay);
+    //result += bsdfSample(light, event, bounce, parentRay);
     return result;
 }
 
@@ -144,13 +142,12 @@ Vec3f PathTracer::estimateDirect(SurfaceScatterEvent& event, int bounce, const R
 
 bool PathTracer::handleSurface(SurfaceScatterEvent& event, Intersection& intersection, IntersectionData& data,
     int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission, bool &wasSpecular) {
-    // bsdf = data->primitive->material;
 
     Vec3f wo;
     if (bounce < maxBounces - 1)
         emission += estimateDirect(event, bounce + 1, ray) * throughput;
 
-    if (data.primitive->emissive() && bounce >= 0) {
+    if (data.primitive->emissive() && bounce == 0) {
         emission += data.primitive->evalEmissionDirect(intersection, data) * throughput;
     }
 

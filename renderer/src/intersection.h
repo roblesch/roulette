@@ -78,17 +78,24 @@ struct SurfaceScatterEvent
         flippedFrame = hitBackside;
     }
 
-    SurfaceScatterEvent(const IntersectionData* intersection,
-        const TangentFrame& frame,
-        const Vec3f& wi,
-        bool flippedFrame) :
-        data(intersection),
-        frame(frame),
-        wi(wi),
+    SurfaceScatterEvent(const IntersectionData* data_,
+        const TangentFrame& frame_,
+        const Vec3f& wi_,
+        bool flippedFrame_) :
+        data(data_),
+        frame(frame_),
+        wi(wi_),
         wo(0.0f),
         weight(1.0f),
         pdf(1.0f),
-        flippedFrame(flippedFrame) {};
+        flippedFrame(flippedFrame_) {};
+
+    SurfaceScatterEvent makeForwardEvent() const
+    {
+        SurfaceScatterEvent copy(*this);
+        copy.wo = -copy.wi;
+        return copy;
+    }
 };
 
 #endif
