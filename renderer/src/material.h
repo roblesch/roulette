@@ -10,6 +10,7 @@ public:
     virtual ~Material() = default;
     virtual Vec3f eval(const SurfaceScatterEvent& event) const = 0;
     virtual float pdf(const SurfaceScatterEvent& event) const = 0;
+    virtual bool sample(SurfaceScatterEvent& event) const = 0;
 
     Vec3f albedo{};
     Vec3f debug{randf(), randf(), randf()};
@@ -29,6 +30,14 @@ public:
         if (event.wi.z() <= 0.0f || event.wo.z() <= 0.0f)
             return 0.0f;
         return cosineHemispherePdf(event.wo);
+    }
+    bool sample(SurfaceScatterEvent& event) const override {
+        if (event.wi.z() <= 0.0f)
+            return false;
+        event.wo = cosineHemisphere(Vec2f(randf(), randf()));
+        event.pdf = cosineHemispherePdf(event.wo);
+        event.weight = albedo;
+        return true;
     }
 };
 

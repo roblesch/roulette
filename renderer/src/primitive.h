@@ -41,10 +41,16 @@ public:
     float bsdfPdf(const SurfaceScatterEvent& event) const {
         return material->pdf(event);
     }
+    bool sampleBsdf(SurfaceScatterEvent& event) const {
+        return material->sample(event);
+    }
     Vec3f evalEmissionDirect(const Intersection& intersection, const IntersectionData& data) const {
         if (!emissive())
             return Vec3f(0.0f);
         return emitter->radiance;
+    }
+    float shapePdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const {
+        return shape->pdf(intersection, data, p);
     }
 
     shared_ptr<Shape> shape;

@@ -50,6 +50,7 @@ public:
     virtual bool intersect(Ray& ray, Intersection& intersection) const = 0;
     virtual void setIntersectionData(Intersection& intersection, IntersectionData& data) const = 0;
     virtual bool sampleDirect(const Vec3f& p, LightSample& sample) const = 0;
+    virtual float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const = 0;
 
     Vec3f pos;
     Vec3f scale;
@@ -99,6 +100,11 @@ public:
 
         return true;
     }
+    float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const override {
+        float cosTheta = std::abs(frame.normal.dot(data.w));
+        float t = frame.normal.dot(base - p) / frame.normal.dot(data.w);
+        return t * t / (cosTheta * area);
+    }
 
     Vec3f base;
     Vec3f edge0, edge1;
@@ -128,7 +134,10 @@ public:
 
     bool intersect(Ray& ray, Intersection& intersection) const override;
     void setIntersectionData(Intersection &intersection, IntersectionData &data) const override;
-    bool sampleDirect(const Vec3f& p, LightSample& sample) const { return false; }
+    bool sampleDirect(const Vec3f& p, LightSample& sample) const override { return false; }
+    float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const override {
+        return (p - data.p).lengthSq() / (-data.w.dot(data.Ng) * area);
+    }
 
     float area;
 };
