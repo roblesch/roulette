@@ -34,7 +34,7 @@ public:
     bool sample(SurfaceScatterEvent& event) const override {
         if (event.wi.z() <= 0.0f)
             return false;
-        event.wo = cosineHemisphere(Vec2f(randf(), randf()));
+        event.wo = cosineHemisphere(event.sampler->next2D(BsdfSample));
         event.pdf = cosineHemispherePdf(event.wo);
         event.weight = albedo;
         return true;

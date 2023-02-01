@@ -4,6 +4,7 @@
 #include "usings.h"
 
 #include "ray.h"
+#include "sampler.h"
 
 class Primitive;
 class Material;
@@ -54,6 +55,7 @@ struct IntersectionData
 struct SurfaceScatterEvent
 {
     const IntersectionData* data;
+    PathSampleGenerator* sampler;
     TangentFrame frame;
     Vec3f wi, wo;
     Vec3f weight;
@@ -79,10 +81,12 @@ struct SurfaceScatterEvent
     }
 
     SurfaceScatterEvent(const IntersectionData* data_,
+        PathSampleGenerator* sampler_,
         const TangentFrame& frame_,
         const Vec3f& wi_,
         bool flippedFrame_) :
         data(data_),
+        sampler(sampler_),
         frame(frame_),
         wi(wi_),
         wo(0.0f),

@@ -4,28 +4,33 @@
 #include "usings.h"
 
 #include "ray.h"
+#include "sampler.h"
 #include "scene.h"
 
 class Tracer {
 public:
     virtual ~Tracer() = default;
-
-    virtual Vec3f trace(const Scene &scene, const Vec2i &px) = 0;
+    virtual Vec3f trace(const Vec2i &px, PathSampleGenerator& sampler) = 0;
 };
 
 class CameraDebugTracer : public Tracer {
 public:
-    Vec3f trace(const Scene &scene, const Vec2i &px) override;
+    CameraDebugTracer(const Scene& scene) : scene(&scene) {};
+    Vec3f trace(const Vec2i &px, PathSampleGenerator& sampler) override;
+    const Scene* scene;
 };
 
 class IntersectionDebugTracer : public Tracer {
 public:
-    Vec3f trace(const Scene& scene, const Vec2i& px) override;
+    IntersectionDebugTracer(const Scene& scene) : scene(&scene) {};
+    Vec3f trace(const Vec2i& px, PathSampleGenerator &sampler) override;
+    const Scene* scene;
 };
 
 class PathTracer : public Tracer {
 public:
-    Vec3f trace(const Scene& scene, const Vec2i& px) override;
+    PathTracer(const Scene& scene) : scene(&scene) {};
+    Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
     bool handleSurface(SurfaceScatterEvent& event, Intersection& intersection, IntersectionData& data,
         int bounce, Ray& ray, Vec3f& throughput, Vec3f& emission, bool& wasSpecular);
     Vec3f estimateDirect(SurfaceScatterEvent& event, int bounce, const Ray& parentRay);
@@ -35,7 +40,7 @@ public:
     Vec3f attenuatedEmission(const Primitive& light, float expectedDist, Intersection& intersection, IntersectionData& data, int bounce, Ray& ray);
     Vec3f generalizedShadowRay(Ray& ray, const Primitive* endCap, int bounce) const;
     inline Vec3f generalizedShadowRayImpl(Ray& ray, const Primitive* endCap, int bounce, bool startsOnSurface, bool endsOnSurface, float& pdfForward, float& pdfBackward) const;
-    SurfaceScatterEvent makeLocalScatterEvent(Intersection& intersection, IntersectionData& data, Ray& ray) const {
+    SurfaceScatterEvent makeLocalScatterEvent(Intersection& intersection, IntersectionData& data, Ray& ray, PathSampleGenerator *sampler) const {
         TangentFrame frame(data.Ns);
 
         bool hitBackside = frame.normal.dot(ray.d()) > 0.0f;
@@ -47,6 +52,7 @@ public:
 
         return SurfaceScatterEvent(
             &data,
+            sampler,
             frame,
             frame.toLocal(-ray.d()),
             hitBackside 

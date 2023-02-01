@@ -49,7 +49,7 @@ public:
 
     virtual bool intersect(Ray& ray, Intersection& intersection) const = 0;
     virtual void setIntersectionData(Intersection& intersection, IntersectionData& data) const = 0;
-    virtual bool sampleDirect(const Vec3f& p, LightSample& sample) const = 0;
+    virtual bool sampleDirect(const Vec3f& p, PathSampleGenerator& sampler, LightSample& sample) const = 0;
     virtual float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const = 0;
 
     Vec3f pos;
@@ -85,11 +85,11 @@ public:
 
     bool intersect(Ray& ray, Intersection& intersection) const override;
     void setIntersectionData(Intersection& intersection, IntersectionData& data) const override;
-    bool sampleDirect(const Vec3f& p, LightSample& sample) const override {
+    bool sampleDirect(const Vec3f& p, PathSampleGenerator &sampler, LightSample& sample) const override {
         if (frame.normal.dot(p - base) <= 0.0f)
             return false;
 
-        Vec2f xi(randf(), randf());
+        Vec2f xi = sampler.next2D(EmitterSample);
         Vec3f q = base + xi.x() * edge0 + xi.y() * edge1;
         sample.d = q - p;
         float rSq = sample.d.lengthSq();
@@ -134,7 +134,7 @@ public:
 
     bool intersect(Ray& ray, Intersection& intersection) const override;
     void setIntersectionData(Intersection &intersection, IntersectionData &data) const override;
-    bool sampleDirect(const Vec3f& p, LightSample& sample) const override { return false; }
+    bool sampleDirect(const Vec3f& p, PathSampleGenerator& sampler, LightSample& sample) const override { return false; }
     float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const override {
         return (p - data.p).lengthSq() / (-data.w.dot(data.Ng) * area);
     }

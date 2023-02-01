@@ -5,6 +5,8 @@
 
 #include "usings.h"
 
+#include "sampler.h"
+
 struct PositionSample {
     Vec3f p;
     Vec3f weight;
@@ -28,6 +30,7 @@ public:
            const Mat4f &transform) :
             resx(resx),
             resy(resy),
+            pixelSize(1.0f/resx, 1.0f/resy),
             aspect((float) resy / (float) resx),
             fovd(fovd),
             fovr(d_to_r(fovd)),
@@ -47,6 +50,7 @@ public:
            const Vec3f &up) :
             resx(resx),
             resy(resy),
+            pixelSize(1.0f / resx, 1.0f / resy),
             aspect((float) resy / (float) resx),
             fovd(fovd),
             fovr(d_to_r(fovd)),
@@ -58,29 +62,34 @@ public:
             up(up),
             transform(Mat4f::lookAt(eye, center - eye, up)) {};
 
-    void samplePosition(PositionSample& sample) const {
+    void samplePosition(PositionSample& sample, PathSampleGenerator &sampler) const {
         sample.p = eye;
         sample.weight = Vec3f(1.0f);
         sample.pdf = 1.0f;
         sample.Ng = transform.fwd();
     }
 
-    [[nodiscard]] Vec3f sampleDirection(Vec2i px) const {
+    [[nodiscard]] Vec3f sampleDirection(Vec2i px, PathSampleGenerator &sampler) const {
+        Vec2f uv = sampler.next2D(CameraSample);
+        uv -= 0.5f;
         Vec3f camDir = Vec3f(
-                -1.0f + 2.0f * (float(px.x()) / float(resx)),
-                aspect - 2.0f * aspect * (float(px.y()) / float(resy)),
+                //-1.0f + 2.0f * (float(px.x()) / float(resx)),
+                //aspect - 2.0f * aspect * (float(px.y()) / float(resy)),
+                -1.0f + (float(px.x()) + 0.5f + uv.x())*2.0f*pixelSize.x(),
+                aspect - (float(px.y()) + 0.5f + uv.y())*2.0f*pixelSize.y(),
                 toPlane).normalized();
         return transform.transformVector(camDir);
     }
 
-    void sampleDirection(Vec2i px, DirectionSample& sample) const {
-        sample.d = sampleDirection(px);
+    void sampleDirection(Vec2i px, DirectionSample& sample, PathSampleGenerator &sampler) const {
+        sample.d = sampleDirection(px, sampler);
         sample.weight = Vec3f(1.0f);
         sample.pdf = 1.0f;
     }
 
     int resx{};
     int resy{};
+    Vec2f pixelSize{};
     float aspect{};
     float fovd{};
     float fovr{};

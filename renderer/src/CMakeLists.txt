@@ -9,12 +9,11 @@
         "tracer.h"
         "pathtracer.cpp"
         "primitive.h"
-        
         "ray.h"
         "raytracer.cpp"
         "renderer.h"
+        "sampler.h"
         "scene.h"
-        
         "sceneparser.h"
         "sceneparser.cpp"
         "shape.h"

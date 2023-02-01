@@ -32,8 +32,8 @@ public:
         shape->setIntersectionData(intersection, data);
         data.primitive = this;
     }
-    bool sampleLightDirect(const Vec3f& p, LightSample& sample) const {
-        return shape->sampleDirect(p, sample);
+    bool sampleLightDirect(const Vec3f& p, PathSampleGenerator& sampler, LightSample& sample) const {
+        return shape->sampleDirect(p, sampler, sample);
     }
     Vec3f evalBsdf(const SurfaceScatterEvent& event) const {
         return material->eval(event);
