@@ -524,3 +524,6 @@ fabric.properties
 
 # Notes
 devnotes
+
+# Outputs
+*.png

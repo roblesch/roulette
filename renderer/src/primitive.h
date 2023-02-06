@@ -17,22 +17,40 @@ public:
             material(std::move(material)),
             emitter(std::move(emitter)) {};
 
+    const Primitive* get() const {
+        return this;
+    }
     bool emissive() const { return emitter ? true : false; }
-    bool intersect(Ray& ray, IntersectionData& intersection);
-    void setIntersectionData(IntersectionData& intersection) {
-        shape->setIntersectionData(intersection);
+    bool intersect(Ray& ray, Intersection& intersection) const {
+        if (shape->intersect(ray, intersection)) {
+            intersection.primitive = this;
+            return true;
+        }
+        return false;
     }
-    bool sampleDirect(const Vec3f& p, LightSample& sample) const {
-        return shape->sampleDirect(p, sample);
+    void setIntersectionData(Intersection &intersection, IntersectionData &data) const {
+        shape->setIntersectionData(intersection, data);
+        data.primitive = this;
     }
-    Vec3f evalDirect(const IntersectionData& data) const {
+    bool sampleLightDirect(const Vec3f& p, PathSampleGenerator& sampler, LightSample& sample) const {
+        return shape->sampleDirect(p, sampler, sample);
+    }
+    Vec3f evalBsdf(const SurfaceScatterEvent& event) const {
+        return material->eval(event);
+    }
+    float bsdfPdf(const SurfaceScatterEvent& event) const {
+        return material->pdf(event);
+    }
+    bool sampleBsdf(SurfaceScatterEvent& event) const {
+        return material->sample(event);
+    }
+    Vec3f evalEmissionDirect(const Intersection& intersection, const IntersectionData& data) const {
         if (!emissive())
             return Vec3f(0.0f);
-        //if (hitBackside) TODO: hitbackside?
         return emitter->radiance;
     }
-    float directPdf(const IntersectionData& data, const Vec3f& p) const {
-        return shape->directPdf(data, p);
+    float shapePdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const {
+        return shape->pdf(intersection, data, p);
     }
 
     shared_ptr<Shape> shape;
