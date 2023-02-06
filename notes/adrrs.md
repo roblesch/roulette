@@ -31,4 +31,21 @@ estimate generates "weight window" which keeps path contribution roughly constan
 
 **5.2 adjoint solution estimate**
 
-$\tilde\Psi_o^r(y)$
+Reflected outgoing adjoint $\tilde\Psi_o^r(y) = \frac{k(y)}{\pi}\tilde G(y)$
+
+<img src="adrrs.assets/image-20230205155208127.png" alt="image-20230205155208127" style="zoom:50%;" />
+
+- cache of estimates with validity radius where any sample in the radius can reuse the estimate
+- if no estimate, kernel density estimation computes new estimate from nearby particles
+- $\tilde G$ is refined each iteration and its error estimated; ADRRS is applied at a collision only if the estimated error is below 30%, otherwise a globally fixed-size weight window is applied
+
+![image-20230205155737677](adrrs.assets/image-20230205155737677.png)
+
+- Init RR/split factor $q$ to 1 on first collision
+- split at a collision limited to 100
+- ray tree size disables splitting when splits in the tree are > 1000
+
+Path guiding code of Vorba et. al [2014]
+
+"On-line Learning of Parametric Mixture Models for Light Transport Simulation"
+
