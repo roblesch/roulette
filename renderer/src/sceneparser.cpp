@@ -158,6 +158,7 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
             Vec3f radiance = as_vec3(_prim["emission"]);
             emit = make_shared<Emitter>(radiance);
             primitives[name]->emitter = emit;
+            primitives[name]->material = make_shared<Lambertian>(Vec3f(0.0f));
             lights[name] = primitives[name];
         }
     }

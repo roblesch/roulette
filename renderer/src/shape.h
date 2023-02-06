@@ -6,14 +6,6 @@
 #include "ray.h"
 #include "intersection.h"
 
-struct LightSample
-{
-    Vec3f d;
-    float dist;
-    float pdf;
-    //const Medium* medium;
-};
-
 class Shape {
 public:
     explicit Shape(const Mat4f &to_world) :
@@ -55,10 +47,10 @@ public:
         to_obj = to_world.invert();
     };
 
-    virtual bool intersect(Ray& ray, IntersectionData& intersection) = 0;
-    virtual void setIntersectionData(IntersectionData& intersection) = 0;
-    virtual bool sampleDirect(const Vec3f& p, LightSample& sample) = 0;
-    virtual float directPdf(const IntersectionData& data, const Vec3f& p) const = 0;
+    virtual bool intersect(Ray& ray, Intersection& intersection) const = 0;
+    virtual void setIntersectionData(Intersection& intersection, IntersectionData& data) const = 0;
+    virtual bool sampleDirect(const Vec3f& p, PathSampleGenerator& sampler, LightSample& sample) const = 0;
+    virtual float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const = 0;
 
     Vec3f pos;
     Vec3f scale;
@@ -91,13 +83,26 @@ public:
         frame = TangentFrame(n, edge0.normalized(), edge1.normalized());
     };
 
-    bool intersect(Ray& ray, IntersectionData& intersection) override;
-    void setIntersectionData(IntersectionData& intersection) override;
-    bool sampleDirect(const Vec3f& p, LightSample& sample) override;
-    float directPdf(const IntersectionData& data, const Vec3f& p) const override {
+    bool intersect(Ray& ray, Intersection& intersection) const override;
+    void setIntersectionData(Intersection& intersection, IntersectionData& data) const override;
+    bool sampleDirect(const Vec3f& p, PathSampleGenerator &sampler, LightSample& sample) const override {
+        if (frame.normal.dot(p - base) <= 0.0f)
+            return false;
+
+        Vec2f xi = sampler.next2D(EmitterSample);
+        Vec3f q = base + xi.x() * edge0 + xi.y() * edge1;
+        sample.d = q - p;
+        float rSq = sample.d.lengthSq();
+        sample.dist = std::sqrt(rSq);
+        sample.d /= sample.dist;
+        float cosTheta = -frame.normal.dot(sample.d);
+        sample.pdf = rSq / (cosTheta * area);
+
+        return true;
+    }
+    float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const override {
         float cosTheta = std::abs(frame.normal.dot(data.w));
         float t = frame.normal.dot(base - p) / frame.normal.dot(data.w);
-
         return t * t / (cosTheta * area);
     }
 
@@ -127,10 +132,10 @@ public:
         area = 2.0f * faceCdf.z();
     };
 
-    bool intersect(Ray& ray, IntersectionData& intersection) override;
-    void setIntersectionData(IntersectionData& intersection) override;
-    bool sampleDirect(const Vec3f& p, LightSample& sample) override { return false; }
-    float directPdf(const IntersectionData& data, const Vec3f& p) const override {
+    bool intersect(Ray& ray, Intersection& intersection) const override;
+    void setIntersectionData(Intersection &intersection, IntersectionData &data) const override;
+    bool sampleDirect(const Vec3f& p, PathSampleGenerator& sampler, LightSample& sample) const override { return false; }
+    float pdf(const Intersection& intersection, const IntersectionData& data, const Vec3f& p) const override {
         return (p - data.p).lengthSq() / (-data.w.dot(data.Ng) * area);
     }
 

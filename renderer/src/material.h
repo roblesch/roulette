@@ -8,12 +8,12 @@
 class Material {
 public:
     virtual ~Material() = default;
+    virtual Vec3f eval(const SurfaceScatterEvent& event) const = 0;
+    virtual float pdf(const SurfaceScatterEvent& event) const = 0;
+    virtual bool sample(SurfaceScatterEvent& event) const = 0;
 
     Vec3f albedo{};
     Vec3f debug{randf(), randf(), randf()};
-    virtual Vec3f eval(const SurfaceScatterEvent &event) const = 0;
-    virtual float pdf(const SurfaceScatterEvent& event) const = 0;
-    virtual bool sample(SurfaceScatterEvent& event) const = 0;
 };
 
 class Lambertian : public Material {
@@ -34,8 +34,7 @@ public:
     bool sample(SurfaceScatterEvent& event) const override {
         if (event.wi.z() <= 0.0f)
             return false;
-        Vec2f xi(randf(), randf());
-        event.wo = cosineHemisphere(xi);
+        event.wo = cosineHemisphere(event.sampler->next2D(BsdfSample));
         event.pdf = cosineHemispherePdf(event.wo);
         event.weight = albedo;
         return true;
