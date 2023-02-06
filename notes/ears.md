@@ -39,3 +39,11 @@ splitting factor is determined as an average of component-wise (color-wise) vari
 variance is computed against a denoised image in lieu of ground truth
 
 outliers are removed when computing average image variance
+
+in practice, variance is removed by relmse rather than denoised reference?
+
+qualities of test scene
+
+- many dark surfaces
+
+gaussian mixture is path guiding?
