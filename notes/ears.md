@@ -35,3 +35,7 @@ splitting reduces variance by continuing a path with $n$ addtl. independent samp
 "the computed RRS factors are optimal under the constraint that exactly as many shadow rays need to be traced as BSDF samples."
 
 splitting factor is determined as an average of component-wise (color-wise) variance estimation
+
+variance is computed against a denoised image in lieu of ground truth
+
+outliers are removed when computing average image variance
