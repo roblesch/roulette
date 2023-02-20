@@ -29,4 +29,12 @@ public:
     void render(const Scene &scene, FrameBuffer &frame) override;
 };
 
+class OIDNIntegrator : public Integrator {
+public:
+    OIDNIntegrator() {
+        sampler = std::unique_ptr<PathSampleGenerator>(new UniformPathSampler(0xBA5EBA11));
+    }
+    void render(const Scene& scene, FrameBuffer& frame) override;
+};
+
 #endif

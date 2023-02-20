@@ -7,6 +7,3 @@
 [submodule "renderer/ext/stb"]
 	path = renderer/ext/stb
 	url = git@github.com:roblesch/stb.git
-[submodule "renderer/ext/oidn"]
-	path = renderer/ext/oidn
-	url = git@github.com:OpenImageDenoise/oidn.git

@@ -10,7 +10,10 @@ int main(int argc, char *argv[]) {
     std::filesystem::remove("out.png");
     renderer.render();
 #ifdef _WIN32
-    system("out.png");
+    //system("albedo_img.png");
+    //system("normal_img.png");
+    system("oidn_img.png");
+    system("traced_img.png");
 #elif __APPLE__
     system("open out.png");
 #endif

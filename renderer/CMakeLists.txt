@@ -18,4 +18,16 @@ add_subdirectory("ext")
 add_executable(renderer
     "main.cpp"
 )
+
 target_link_libraries(renderer core)
+
+if (WIN32)
+    add_custom_command(TARGET renderer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${OIDN_BIN_DIR}/OpenImageDenoise.dll"
+            $<TARGET_FILE_DIR:renderer>)
+    add_custom_command(TARGET renderer POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${TBB_BIN_DIR}/tbb12.dll"
+            $<TARGET_FILE_DIR:renderer>)
+endif()
