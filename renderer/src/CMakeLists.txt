@@ -17,6 +17,8 @@ set(OIDN_LIB_DIR ${OIDN_ROOT}/lib)
 if (WIN32)
     set(OIDN_BIN_DIR ${OIDN_ROOT}/bin PARENT_SCOPE)
     set(TBB_BIN_DIR ${ONEAPI_ROOT}/tbb/latest/redist/intel64/vc14 PARENT_SCOPE)
+else()
+    set(TBB_LIB_DIR ${ONEAPI_ROOT}/tbb/latest/lib PARENT_SCOPE)
 endif()
 
 find_package(OpenImageDenoise REQUIRED PATHS ${ONEAPI_ROOT})

@@ -15,7 +15,10 @@ int main(int argc, char *argv[]) {
     system("oidn_img.png");
     system("traced_img.png");
 #elif __APPLE__
-    system("open out.png");
+    //system("open albedo_img.png");
+    //system("open normal_img.png");
+    system("open oidn_img.png");
+    system("open traced_img.png");
 #endif
     return 0;
 }

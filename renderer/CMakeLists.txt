@@ -1,6 +1,8 @@
 ﻿cmake_minimum_required(VERSION 3.8)
 set (CMAKE_CXX_STANDARD 20)
 
+set(CMAKE_OSX_ARCHITECTURES x86_64)
+
 project("renderer")
 
 if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ext/json/CMakeLists.txt")
@@ -30,4 +32,8 @@ if (WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "${TBB_BIN_DIR}/tbb12.dll"
             $<TARGET_FILE_DIR:renderer>)
+else()
+    add_custom_command(TARGET renderer POST_BUILD
+            COMMAND ${CMAKE_INSTALL_NAME_TOOL} -add_rpath "${TBB_LIB_DIR}"
+            $<TARGET_FILE:renderer>)
 endif()
