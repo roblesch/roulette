@@ -11,7 +11,7 @@ Vec3f CameraDebugTracer::trace(const Vec2i& px, PathSampleGenerator &sampler) {
         1).abs();
 }
 
-Vec3f IntersectionDebugTracer::trace(const Vec2i& px, PathSampleGenerator &sampler) {
+Vec3f IntersectionDebugTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     Camera cam = scene->camera;
     PositionSample point;
     DirectionSample direction;
@@ -24,9 +24,46 @@ Vec3f IntersectionDebugTracer::trace(const Vec2i& px, PathSampleGenerator &sampl
     Intersection intersection;
     IntersectionData data;
     scene->intersect(ray, intersection, data);
-    if (data.primitive) {
-        if (data.primitive->emissive()) return Vec3f(1.0);
-        else return (data.Ns + 1.0f).normalized();
-    }
-    return Vec3f(0.0f);
+
+    return data.primitive
+        ? (data.Ns + 1.0f).normalized()
+        : Vec3f(0.0f);
+}
+
+Vec3f AlbedoTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
+    Camera cam = scene->camera;
+    PositionSample point;
+    DirectionSample direction;
+
+    cam.samplePosition(point, sampler);
+    cam.sampleDirection(px, direction, sampler);
+
+    Ray ray(point.p, direction.d);
+
+    Intersection intersection;
+    IntersectionData data;
+    scene->intersect(ray, intersection, data);
+
+    return data.primitive
+        ? data.primitive->material->albedo
+        : Vec3f(0.0f);
+}
+
+Vec3f NormalTracer::trace(const Vec2i& px, PathSampleGenerator &sampler) {
+    Camera cam = scene->camera;
+    PositionSample point;
+    DirectionSample direction;
+
+    cam.samplePosition(point, sampler);
+    cam.sampleDirection(px, direction, sampler);
+
+    Ray ray(point.p, direction.d);
+
+    Intersection intersection;
+    IntersectionData data;
+    scene->intersect(ray, intersection, data);
+
+    return data.primitive
+        ? data.Ns.normalized()
+        : Vec3f(0.0f);
 }

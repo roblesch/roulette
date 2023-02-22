@@ -23,6 +23,20 @@ public:
 class IntersectionDebugTracer : public Tracer {
 public:
     IntersectionDebugTracer(const Scene& scene) : scene(&scene) {};
+    Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
+    const Scene* scene;
+};
+
+class AlbedoTracer: public Tracer {
+public:
+    AlbedoTracer(const Scene& scene) : scene(&scene) {};
+    Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
+    const Scene* scene;
+};
+
+class NormalTracer: public Tracer {
+public:
+    NormalTracer(const Scene& scene) : scene(&scene) {};
     Vec3f trace(const Vec2i& px, PathSampleGenerator &sampler) override;
     const Scene* scene;
 };
