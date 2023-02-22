@@ -1,3 +1,13 @@
+/**
+ * octtree.h
+ *
+ * Ported from Alexander Rath's original implementation Feb 22 2023
+ *
+ * https://graphics.cg.uni-saarland.de/publications/rath-sig2022.html
+ * https://github.com/iRath96/ears/blob/master/mitsuba/src/integrators/path/octtree.h
+ * https://github.com/iRath96/ears/blob/master/LICENSE
+ */
+
 #ifndef OCTTREE_H
 #define OCTTREE_H
 
