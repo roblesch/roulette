@@ -33,7 +33,7 @@ add_library(core
         "integrator.cpp"
         "intersection.h"
         "material.h"
-        "tracer.h"
+        "octtree.h"
         "pathtracer.cpp"
         "primitive.h"
         "ray.h"
@@ -45,6 +45,7 @@ add_library(core
         "sceneparser.cpp"
         "shape.h"
         "shape.cpp"
+        "tracer.h"
         "tungstenmath.h"
         "usings.h" "samplebuffer.h")
 

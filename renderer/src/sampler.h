@@ -36,7 +36,7 @@ enum SampleBlock : int
 class PathSampleGenerator
 {
 public:
-    virtual ~PathSampleGenerator() {}
+    virtual ~PathSampleGenerator() = default;
 
     virtual void startPath(uint32 pixelId, int sample) = 0;
     virtual void advancePath() = 0;
@@ -62,7 +62,7 @@ public:
     {
     }
 
-    UniformSampler(uint64 seed, uint64 sequence = 0)
+    explicit UniformSampler(uint64 seed, uint64 sequence = 0)
         : _state(seed),
         _sequence(sequence)
     {
@@ -73,7 +73,7 @@ public:
         union {
             float f;
             uint32 i;
-        } unionHack;
+        } unionHack{};
         unionHack.i = i;
         return unionHack.f;
     }
@@ -89,7 +89,7 @@ public:
     {
         uint64 oldState = _state;
         _state = oldState * 6364136223846793005ULL + (_sequence | 1);
-        uint32 xorShifted = uint32(((oldState >> 18u) ^ oldState) >> 27u);
+        auto xorShifted = uint32(((oldState >> 18u) ^ oldState) >> 27u);
         uint32 rot = oldState >> 59u;
         return (xorShifted >> rot) | (xorShifted << (uint32(-int32(rot)) & 31));
     }
@@ -101,17 +101,15 @@ public:
 
     inline Vec2f next2D()
     {
-        float a = next1D();
-        float b = next1D();
-        return Vec2f(a, b);
+        return {next1D(), next1D()};
     }
 
-    uint64 state() const
+    [[nodiscard]] uint64 state() const
     {
         return _state;
     }
 
-    uint64 sequence() const
+    [[nodiscard]] uint64 sequence() const
     {
         return _sequence;
     }
@@ -122,42 +120,40 @@ class UniformPathSampler : public PathSampleGenerator
     UniformSampler _sampler;
 
 public:
-    UniformPathSampler(uint32 seed)
+    explicit UniformPathSampler(uint32 seed)
         : _sampler(seed)
     {
     }
-    UniformPathSampler(const UniformSampler& sampler)
+    explicit UniformPathSampler(const UniformSampler& sampler)
         : _sampler(sampler)
     {
     }
 
-    virtual void startPath(uint32 /*pixelId*/, int /*sample*/)
+    void startPath(uint32 /*pixelId*/, int /*sample*/) override
     {
     }
-    virtual void advancePath()
+    void advancePath() override
     {
     }
 
-    virtual bool nextBoolean(SampleBlock /*block*/, float pTrue) override final
+    bool nextBoolean(SampleBlock /*block*/, float pTrue) final
     {
         return _sampler.next1D() < pTrue;
     }
-    virtual int nextDiscrete(SampleBlock /*block*/, int numChoices) override final
+    int nextDiscrete(SampleBlock /*block*/, int numChoices) final
     {
-        return int(_sampler.next1D() * numChoices);
+        return int(_sampler.next1D() * (float)numChoices);
     }
-    virtual float next1D(SampleBlock /*block*/) override final
+    float next1D(SampleBlock /*block*/) final
     {
         return _sampler.next1D();
     }
-    virtual Vec2f next2D(SampleBlock /*block*/) override final
+    Vec2f next2D(SampleBlock /*block*/) final
     {
-        float a = _sampler.next1D();
-        float b = _sampler.next1D();
-        return Vec2f(a, b);
+        return {_sampler.next1D(), _sampler.next1D()};
     }
 
-    const UniformSampler& sampler() const
+    [[nodiscard]] const UniformSampler& sampler() const
     {
         return _sampler;
     }
