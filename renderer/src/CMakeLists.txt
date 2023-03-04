@@ -26,6 +26,7 @@ include_directories(${OIDN_INCLUDE_DIR} ${OIDN_ROOT})
 link_directories(${OIDN_LIB_DIR})
 
 add_library(core
+        "earstracer.cpp"
         "camera.h"
         "framebuffer.h"
         "framebuffer.cpp"
@@ -39,6 +40,7 @@ add_library(core
         "ray.h"
         "raytracer.cpp"
         "renderer.h"
+        "samplebuffer.h"
         "sampler.h"
         "scene.h"
         "sceneparser.h"
@@ -47,7 +49,7 @@ add_library(core
         "shape.cpp"
         "tracer.h"
         "tungstenmath.h"
-        "usings.h" "samplebuffer.h")
+        "usings.h")
 
 target_link_libraries(core
         nlohmann_json

@@ -77,4 +77,44 @@ public:
     int maxBounces = 64;
 };
 
+struct LiInput {
+    Vec3f weight;
+    Ray ray;
+    int depth;
+};
+
+struct LiOutput {
+    Vec3f reflected{ 0.f };
+    Vec3f emitted{ 0.f };
+    float cost{ 0.f };
+
+    int numSamples{ 0 };
+    float depthAcc{ 0.f };
+    float depthWeight{ 0.f };
+
+    void markAsLeaf(int depth) {
+        depthAcc = depth;
+        depthWeight = 1;
+    }
+
+    float averagePathLength() const {
+        return depthWeight > 0 ? depthAcc / depthWeight : 0;
+    }
+
+    float numberOfPaths() const {
+        return depthWeight;
+    }
+
+    Vec3f totalContribution() const {
+        return reflected + emitted;
+    }
+};
+
+class EARSTracer : public PathTracer {
+public:
+    EARSTracer(const Scene& scene) : PathTracer(scene) {};
+    Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
+    LiOutput Li(LiInput &input, PathSampleGenerator& sampler);
+};
+
 #endif

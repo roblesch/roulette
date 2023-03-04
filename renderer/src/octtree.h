@@ -16,11 +16,6 @@
 #include <array>
 #include <vector>
 
-void atomicAdd(Vec3f *dest, const Vec3f &src) {
-    for (int c = 0; c < 3; ++c)
-        dest[c] += src[c];
-}
-
 class Octtree {
 public:
     static constexpr int HISTOGRAM_RESOLUTION = 4;
@@ -77,8 +72,8 @@ public:
         }
 
         void splatLrEstimate(const Vec3f &sum, const Vec3f &sumSquares, float cost, float weight) {
-            atomicAdd(&m_lrFirstMoment, sum);
-            atomicAdd(&m_lrSecondMoment, sumSquares);
+            m_lrFirstMoment += sum;
+            m_lrSecondMoment += sumSquares;
             m_lrCost += cost;
             m_lrWeight += weight;
         }
