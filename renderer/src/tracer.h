@@ -81,6 +81,7 @@ struct LiInput {
     Vec3f weight;
     Ray ray;
     int depth;
+    bool wasSpecular;
 };
 
 struct LiOutput {
@@ -115,6 +116,7 @@ public:
     EARSTracer(const Scene& scene) : PathTracer(scene) {};
     Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
     LiOutput Li(LiInput &input, PathSampleGenerator& sampler);
+    Vec3f SampleDirectLighting(SurfaceScatterEvent& event, const Ray& ray);
 };
 
 #endif

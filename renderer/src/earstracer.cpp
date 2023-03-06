@@ -10,6 +10,10 @@ inline int mapOutgoingDirectionToHistogramBin(const Vec3f &d) {
     return -1;
 }
 
+Vec3f EARSTracer::SampleDirectLighting(SurfaceScatterEvent& event, const Ray& parentRay) {
+    return {};
+}
+
 LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
     LiOutput output;
 
@@ -18,50 +22,146 @@ LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
         return output;
     }
 
-    Intersection intersection;
-    IntersectionData data;
-    SurfaceScatterEvent event;
+    Intersection iinfo;
+    IntersectionData idata;
+    SurfaceScatterEvent its;
 
-    bool its = scene->intersect(input.ray, intersection, data);
+    bool hit = scene->intersect(input.ray, iinfo, idata);
     output.cost += COST_BSDF;
 
-    if (!its) {
+    if (!hit) {
         output.markAsLeaf(input.depth);
+        return output;
     }
 
-    if (data.primitive->emissive()) {
-        output.emitted += data.primitive->evalEmissionDirect(intersection, data);
+    if (idata.primitive->emissive() && input.depth < 1) {
+        output.emitted += idata.primitive->evalEmissionDirect(iinfo, idata);
     }
 
-    // TODO: Splitting Factor
+    if (input.depth >= maxBounces) {
+        output.markAsLeaf(input.depth);
+        return output;
+    }
+
+    const float splittingFactor = 1.0f;
     const int numSamples = 1;
+    Vec3f lrSum(0.0f);
+    Vec3f lrSumSquares(0.0f);
+    float lrSumCosts = 0.0f;
+
+    float roulettePdf = abs(input.weight).max();
+    if (roulettePdf == 0.0f)
+        return output;
+    if (input.depth > 2 && roulettePdf < 0.1f) {
+        if (sampler.nextBoolean(DiscreteRouletteSample, roulettePdf))
+            input.weight /= roulettePdf;
+        else
+            return output;
+    }
+
     for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
         Vec3f irradianceEstimate(0.0f);
         Vec3f LrEstimate(0.0f);
         float LrCost(0.0f);
 
-        event = makeLocalScatterEvent(intersection, data, input.ray, &sampler);
+        its = makeLocalScatterEvent(iinfo, idata, input.ray, &sampler);
 
-        /* Direct Illumination */
+        /* ==================================================================== */
+        /*                     Direct illumination sampling                     */
+        /* ==================================================================== */
+
         LrCost += COST_NEE;
-        const Primitive* light = scene->primitives.at("Light")->get();
-        LrEstimate += lightSample(*light, event, input.depth, input.ray);
-        //if (light->sampleLightDirect(event.data->p, *event.sampler, sample)) {
-        //    Vec3f bsdfVal = event.data->primitive->evalBsdf(event);
-        //    if (bsdfVal != 0.0f) {
-        //        float bsdfPdf = event.data->primitive->bsdfPdf(event);
-        //        float misWeight = powerHeuristic(sample.pdf, bsdfPdf);
-        //        LrEstimate += bsdfVal * misWeight;
-        //        irradianceEstimate += bsdfVal * misWeight;
-        //    }
-        //}
+        LightSample lightsample;
+        auto light = scene->primitives.at("Light");
 
-        /* BSDF Sampling */
-        //Vec3f bsdfWeight(0.0f);
-        //float bsdfPdf;
-        //Vec3f LiEstimate(0.0f);
+        /* Sample direct illumination */
+        Vec3f value(0.0f);
+        if (light->sampleLightDirect(its.data->p, *its.sampler, lightsample))
+            value = light->evalEmissionDirect(iinfo, idata);
+        its.wo = its.frame.toLocal(lightsample.d);
 
-        output.reflected += LrEstimate;
+        /* Test visibility */
+        Ray shadowRay = input.ray.scatter(its.data->p, lightsample.d, its.data->epsilon);
+        Intersection ishadow;
+        IntersectionData dshadow;
+        if (scene->intersect(shadowRay, ishadow, dshadow) && dshadow.primitive != light.get())
+            value *= 0.0f;
+
+        /* Attenuate direct illumination with bsdf */
+        Vec3f bsdfVal = its.data->primitive->evalBsdf(its);
+        if (bsdfVal != 0.0f) {
+            float bsdfPdf = its.data->primitive->bsdfPdf(its);
+            float misWeight = powerHeuristic(lightsample.pdf, bsdfPdf);
+            float absCosTheta = std::abs(its.wo.z());
+
+            LrEstimate += bsdfVal * value * misWeight / lightsample.pdf;
+            irradianceEstimate += absCosTheta * value * misWeight;
+        }
+
+        /* ==================================================================== */
+        /*                            BSDF sampling                             */
+        /* ==================================================================== */
+
+        Vec3f bsdfWeight(0.0f);
+        float bsdfPdf;
+        Vec3f LiEstimate(0.0f);
+
+        do {
+            LiInput inputNested = input;
+            inputNested.weight *= 1.f / splittingFactor;
+            Intersection iinfoNested = iinfo;
+            IntersectionData idataNested = idata;
+            Ray& rayNested = inputNested.ray;
+            SurfaceScatterEvent itsNested = makeLocalScatterEvent(iinfoNested, idataNested, rayNested, &sampler);
+            if (!itsNested.data->primitive->sampleBsdf(itsNested) || itsNested.weight == 0.0f)
+                break;
+            bsdfWeight = itsNested.weight;
+            bsdfPdf = itsNested.pdf;
+            // TODO: Maybe transform to world
+            float absCosTheta = std::abs(itsNested.wo.z());
+
+            Vec3f wo = itsNested.frame.toGlobal(itsNested.wo);
+            bool hitEmitter = false;
+            Vec3f value;
+
+            rayNested = Ray(itsNested.data->p, wo);
+            LrCost += COST_BSDF;
+            if (scene->intersect(rayNested, iinfoNested, idataNested)) {
+                itsNested = makeLocalScatterEvent(iinfoNested, idataNested, rayNested, &sampler);
+                if (idataNested.primitive->emissive()) {
+                    value = idataNested.primitive->evalEmissionDirect(iinfoNested, idataNested);
+                    hitEmitter = true;
+                }
+            }
+            else {
+                break;
+            }
+
+            inputNested.weight *= bsdfWeight;
+            if (hitEmitter) {
+                LightSample lightsampleNested;
+                itsNested.data->primitive->sampleLightDirect(itsNested.data->p, sampler, lightsampleNested);
+                float lumPdf = lightsampleNested.pdf;
+                float misWeight = powerHeuristic(bsdfPdf, lumPdf);
+                LrEstimate += bsdfWeight * value * misWeight;
+                irradianceEstimate += absCosTheta * (value / bsdfPdf) * misWeight;
+            }
+
+            /* ==================================================================== */
+            /*                         Indirect illumination                        */
+            /* ==================================================================== */
+            inputNested.depth++;
+            LiOutput outputNested = Li(inputNested, sampler);
+            LrEstimate += bsdfWeight * outputNested.totalContribution();
+            irradianceEstimate += absCosTheta * (outputNested.totalContribution() / bsdfPdf);
+            LrCost += outputNested.cost;
+            output.depthAcc += outputNested.depthAcc;
+            output.depthWeight += outputNested.depthWeight;
+
+        } while (false);
+
+        output.reflected += LrEstimate / splittingFactor;
+        output.cost += LrCost;
     }
     return output;
 }
@@ -82,7 +182,7 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     Ray ray(point.p, direction.d);
     Vec3f throughput(1.0f);
     int bounce = 0;
-    LiInput input {throughput, ray, bounce};
+    LiInput input {throughput, ray, bounce, true};
 
     LiOutput output = Li(input, sampler);
     return output.totalContribution();

@@ -116,18 +116,11 @@ Vec3f PathTracer::lightSample(const Primitive& light, SurfaceScatterEvent& event
     Intersection intersection;
     IntersectionData data;
 
-    //Vec3f e = attenuatedEmission(light, sample.dist, intersection, data, bounce, ray);
-    //if (e == 0.0f)
-    //    return Vec3f(0.0f);
+    Vec3f e = attenuatedEmission(light, sample.dist, intersection, data, bounce, ray);
+    if (e == 0.0f)
+        return Vec3f(0.0f);
 
-    Vec3f e(1.0f);
-    if (scene->intersect(ray, intersection, data)) {
-        if (data.primitive != &light) {
-            e = Vec3f(0.0f);
-        }
-    }
-
-    Vec3f lightF = f * e / sample.pdf * light.evalEmissionDirect(intersection, data);
+    Vec3f lightF = f * e / sample.pdf;
     lightF *= powerHeuristic(sample.pdf, event.data->primitive->bsdfPdf(event));
 
     return lightF;
@@ -137,8 +130,8 @@ Vec3f PathTracer::sampleDirect(const Primitive& light, SurfaceScatterEvent& even
     Vec3f result(0.0f);
     result += lightSample(light, event, bounce, parentRay);
     event.sampler->advancePath();
-    //result += bsdfSample(light, event, bounce, parentRay);
-    //event.sampler->advancePath();
+    result += bsdfSample(light, event, bounce, parentRay);
+    event.sampler->advancePath();
     return result;
 }
 
