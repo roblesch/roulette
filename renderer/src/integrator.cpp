@@ -107,7 +107,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
             Vec3f a(0.0f);
             Vec3f n(0.0f);
             Vec3f c(0.0f);
-            int spp = 16;
+            int spp = 2;
             for (int i = 0; i < spp; i++) {
                 a += albedoTracer->trace(px, *sampler);
                 n += normalTracer->trace(px, *sampler);

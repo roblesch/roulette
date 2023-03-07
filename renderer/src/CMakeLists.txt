@@ -34,7 +34,7 @@ add_library(core
         "integrator.cpp"
         "intersection.h"
         "material.h"
-        "octtree.h"
+        "ears.h"
         "pathtracer.cpp"
         "primitive.h"
         "ray.h"

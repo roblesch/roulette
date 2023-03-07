@@ -1,21 +1,17 @@
 #include "tracer.h"
-#include "octtree.h"
 
-/// the cost of ray tracing + direct illumination sample (in seconds)
-static constexpr float COST_NEE = 0.3e-7;
-/// the cost of ray tracing + BSDF/camera sample (in seconds)
-static constexpr float COST_BSDF = 0.3e-7;
+/**
+ * EARS.h
+ *
+ * Adapted from Alexander Rath's original implementation 3/5/2023
+ *
+ * https://graphics.cg.uni-saarland.de/publications/rath-sig2022.html
+ * https://github.com/iRath96/ears/blob/master/mitsuba/src/integrators/path/recursive_path.cpp
+ * https://github.com/iRath96/ears/blob/master/LICENSE
+ */
 
-inline int mapOutgoingDirectionToHistogramBin(const Vec3f &d) {
-    return -1;
-}
-
-Vec3f EARSTracer::SampleDirectLighting(SurfaceScatterEvent& event, const Ray& parentRay) {
-    return {};
-}
-
-LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
-    LiOutput output;
+EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenerator& sampler) {
+    EARSTracer::LiOutput output;
 
     if (input.depth > maxBounces) {
         output.markAsLeaf(input.depth);
@@ -27,7 +23,7 @@ LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
     SurfaceScatterEvent its;
 
     bool hit = scene->intersect(input.ray, iinfo, idata);
-    output.cost += COST_BSDF;
+    output.cost += EARS::COST_BSDF;
 
     if (!hit) {
         output.markAsLeaf(input.depth);
@@ -43,7 +39,14 @@ LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
         return output;
     }
 
+    const bool bsdfHasSmoothComponent = true;
+    Vec3f albedo = its.data->primitive->material->albedo;
+    const int histogramBinIndex = mapOutgoingDirectionToHistogramBin(input.ray.d());
+    const EARS::Octtree::SamplingNode* samplingNode = nullptr;
+    EARS::Octtree::TrainingNode* trainingNode = nullptr;
+    cache.lookup(mapPointToUnitCube(its.data->p), histogramBinIndex, samplingNode, trainingNode);
     const float splittingFactor = 1.0f;
+
     const int numSamples = 1;
     Vec3f lrSum(0.0f);
     Vec3f lrSumSquares(0.0f);
@@ -70,7 +73,7 @@ LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
         /*                     Direct illumination sampling                     */
         /* ==================================================================== */
 
-        LrCost += COST_NEE;
+        LrCost += EARS::COST_NEE;
         LightSample lightsample;
         auto light = scene->primitives.at("Light");
 
@@ -107,7 +110,7 @@ LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
         Vec3f LiEstimate(0.0f);
 
         do {
-            LiInput inputNested = input;
+            EARSTracer::LiInput inputNested = input;
             inputNested.weight *= 1.f / splittingFactor;
             Intersection iinfoNested = iinfo;
             IntersectionData idataNested = idata;
@@ -125,7 +128,7 @@ LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
             Vec3f value;
 
             rayNested = Ray(itsNested.data->p, wo);
-            LrCost += COST_BSDF;
+            LrCost += EARS::COST_BSDF;
             if (scene->intersect(rayNested, iinfoNested, idataNested)) {
                 itsNested = makeLocalScatterEvent(iinfoNested, idataNested, rayNested, &sampler);
                 if (idataNested.primitive->emissive()) {
@@ -151,7 +154,7 @@ LiOutput EARSTracer::Li(LiInput &input, PathSampleGenerator& sampler) {
             /*                         Indirect illumination                        */
             /* ==================================================================== */
             inputNested.depth++;
-            LiOutput outputNested = Li(inputNested, sampler);
+            EARSTracer::LiOutput outputNested = Li(inputNested, sampler);
             LrEstimate += bsdfWeight * outputNested.totalContribution();
             irradianceEstimate += absCosTheta * (outputNested.totalContribution() / bsdfPdf);
             LrCost += outputNested.cost;
@@ -182,8 +185,8 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     Ray ray(point.p, direction.d);
     Vec3f throughput(1.0f);
     int bounce = 0;
-    LiInput input {throughput, ray, bounce, true};
+    EARSTracer::LiInput input {throughput, ray, bounce, true};
 
-    LiOutput output = Li(input, sampler);
+    EARSTracer::LiOutput output = Li(input, sampler);
     return output.totalContribution();
 }
