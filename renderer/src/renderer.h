@@ -21,7 +21,7 @@ public:
     }
 
     void render() {
-        integrator = make_unique<OIDNIntegrator>();
+        integrator = make_unique<EARSIntegrator>();
         integrator->render(scene, frame);
         frame.toPng("traced_img.png");
     }
