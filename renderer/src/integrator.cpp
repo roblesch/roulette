@@ -25,7 +25,7 @@ void PathTraceIntegrator::render(const Scene &scene, FrameBuffer &frame) {
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);
-            sampler->startPath(i + j, 0xFFFFFFFF);
+            sampler->startPath(i + j, 0xFFFF);
             frame.set(px, tracer->trace(px, *sampler));
         }
         std::cout << "Completed row " << j << "\r";
@@ -45,7 +45,7 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);
-            sampler->startPath(i + j, 0xFFFFFFFF);
+            sampler->startPath(i + j, 0xFFFF);
             for (int i = 0; i < frame.spp; i++) {
                 frame.add(px, albedoTracer->trace(px, *sampler), FrameBuffer::ALBEDO);
                 frame.add(px, normalTracer->trace(px, *sampler), FrameBuffer::NORMAL);
@@ -93,12 +93,12 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     auto albedoTracer = make_unique<AlbedoTracer>(scene);
     auto normalTracer = make_unique<NormalTracer>(scene);
     frame.enableOidn();
-    frame.setSpp(2);
+    frame.setSpp(4);
 
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);
-            sampler->startPath(i + j, 0xFFFFFFFF);
+            sampler->startPath(i + j, 0xFFFF);
             for (int i = 0; i < frame.spp; i++) {
                 frame.add(px, albedoTracer->trace(px, *sampler), FrameBuffer::ALBEDO);
                 frame.add(px, normalTracer->trace(px, *sampler), FrameBuffer::NORMAL);

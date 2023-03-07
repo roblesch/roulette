@@ -30,8 +30,10 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
         return output;
     }
 
-    if (idata.primitive->emissive() && input.depth < 1) {
+    if (idata.primitive->emissive() && input.wasSpecular) {
         output.emitted += idata.primitive->evalEmissionDirect(iinfo, idata);
+    } else {
+        input.wasSpecular = false;
     }
 
     if (input.depth >= maxBounces) {
@@ -92,7 +94,7 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
 
         /* Attenuate direct illumination with bsdf */
         Vec3f bsdfVal = its.data->primitive->evalBsdf(its);
-        if (bsdfVal != 0.0f) {
+        if (bsdfVal != 0.0f && its.frame.normal.dot(lightsample.d) * its.wo.z() > 0) {
             float bsdfPdf = its.data->primitive->bsdfPdf(its);
             float misWeight = powerHeuristic(lightsample.pdf, bsdfPdf);
             float absCosTheta = std::abs(its.wo.z());
@@ -131,7 +133,7 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
             LrCost += EARS::COST_BSDF;
             if (scene->intersect(rayNested, iinfoNested, idataNested)) {
                 itsNested = makeLocalScatterEvent(iinfoNested, idataNested, rayNested, &sampler);
-                if (idataNested.primitive->emissive()) {
+                if (idataNested.primitive->emissive() && !iinfoNested.backface || idataNested.backSide) {
                     value = idataNested.primitive->evalEmissionDirect(iinfoNested, idataNested);
                     hitEmitter = true;
                 }
