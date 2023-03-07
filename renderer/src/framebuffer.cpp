@@ -8,25 +8,6 @@
 
 #include "stb_image.h"
 
-Vec3c FrameBuffer::Rgb(int px) {
-    Vec3f pixel = get(px);
-    return {
-            static_cast<uint8>(255.0f * clamp(pixel.r())),
-            static_cast<uint8>(255.0f * clamp(pixel.g())),
-            static_cast<uint8>(255.0f * clamp(pixel.b()))
-    };
-}
-
-Vec4c FrameBuffer::Rgba(int px) {
-    Vec3f pixel = get(px);
-    return {
-            static_cast<uint8>(255.0f * clamp(pixel.r())),
-            static_cast<uint8>(255.0f * clamp(pixel.g())),
-            static_cast<uint8>(255.0f * clamp(pixel.b())),
-            255
-    };
-}
-
 void FrameBuffer::toPpm(const char *filename) {
     std::ofstream out(filename);
     out << "P3\n" << resx << ' ' << resy << "\n255\n";
@@ -51,18 +32,13 @@ Vec3f v3fmax(Vec3f a, Vec3f b) {
     };
 }
 
-void FrameBuffer::toPng(const char *filename) {
+void FrameBuffer::toPng(const char *filename, buffer b) {
     vector<Vec3c> ldr(resx*resy);
-    for (int i = 0; i < buf.size(); i++) {
-        Vec3f a = v3fmax(buf[i], Vec3f(0.0f));
+    for (int i = 0; i < ldr.size(); i++) {
+        Vec3f a = v3fmax(get(i, b), Vec3f(0.0f));
         Vec3f x = v3fmax(a - 0.004f, Vec3f(0.0f));
         Vec3f tonemap = (x*(6.2f*x + 0.5f))/(x*(6.2f*x + 1.7f) + 0.06f);
         ldr[i] = Vec3c(255.0f * clamp(tonemap.x()), 255.0f * clamp(tonemap.y()), 255.0f * clamp(tonemap.z()));
     }
     stbi_write_png(filename, resx, resy, 3, ldr.data(), resx * 3);
-//    rgbBuf = vector<Vec3c>(resx * resy);
-//    for (int i = 0; i < buf.size(); i++) {
-//        rgbBuf[i] = Rgb(i);
-//    }
-//    stbi_write_png(filename, resx, resy, 3, rgbBuf.data(), resx * 3);
 }
