@@ -1,5 +1,7 @@
 #include "integrator.h"
 
+#include <iostream>
+
 #include <OpenImageDenoise/oidn.h>
 
 void RayCastIntegrator::render(const Scene &scene, FrameBuffer &frame) {
@@ -23,13 +25,10 @@ void PathTraceIntegrator::render(const Scene &scene, FrameBuffer &frame) {
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);
-            Vec3f c(0.0f);
-            for (int k = 0; k < 4; k++) {
-                sampler->startPath(i + j, 999999999);
-                c += tracer->trace(px, *sampler);
-            }
-            frame.set(px, c/4.0f);
+            sampler->startPath(i + j, 0xFFFF);
+            frame.set(px, tracer->trace(px, *sampler));
         }
+        std::cout << "Completed row " << j << "\r";
     }
 }
 
@@ -37,43 +36,39 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     Camera cam = scene.camera;
     int resx = cam.resx;
     int resy = cam.resy;
+    tracer = make_unique<PathTracer>(scene);
     auto albedoTracer = make_unique<AlbedoTracer>(scene);
     auto normalTracer = make_unique<NormalTracer>(scene);
-    FrameBuffer albedoBuffer(resx, resy);
-    FrameBuffer normalBuffer(resx, resy);
-    tracer = make_unique<PathTracer>(scene);
+    frame.enableOidn();
+    frame.setSpp(4);
 
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);
-            sampler->startPath(i + j, 999999999);
-            Vec3f a(0.0f);
-            Vec3f n(0.0f);
-            Vec3f c(0.0f);
-            int spp = 1;
-            for (int i = 0; i < spp; i++) {
-                a += albedoTracer->trace(px, *sampler);
-                n += normalTracer->trace(px, *sampler);
-                c += tracer->trace(px, *sampler);
+            sampler->startPath(i + j, 0xFFFF);
+            for (int i = 0; i < frame.spp; i++) {
+                frame.add(px, albedoTracer->trace(px, *sampler), FrameBuffer::ALBEDO);
+                frame.add(px, normalTracer->trace(px, *sampler), FrameBuffer::NORMAL);
+                frame.add(px, tracer->trace(px, *sampler), FrameBuffer::COLOR);
             }
-            albedoBuffer.set(px, a/(float)spp);
-            normalBuffer.set(px, n/(float)spp);
-            frame.set(px, c/(float)spp);
         }
+        std::cout << "Completed row " << j << std::endl;
     }
 
-    albedoBuffer.toPng("albedo_img.png");
-    normalBuffer.toPng("normal_img.png");
+    frame.normalize(FrameBuffer::ALBEDO);
+    frame.normalize(FrameBuffer::NORMAL);
+    frame.normalize(FrameBuffer::COLOR);
 
-    FrameBuffer OIDNBuffer(resx, resy);
+    frame.toPng("albedo_img.png", FrameBuffer::ALBEDO);
+    frame.toPng("normal_img.png", FrameBuffer::NORMAL);
 
     OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
     oidnCommitDevice(device);
     OIDNFilter filter = oidnNewFilter(device, "RT");
-    oidnSetSharedFilterImage(filter, "color", frame.buf.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
-    oidnSetSharedFilterImage(filter, "albedo", albedoBuffer.buf.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
-    oidnSetSharedFilterImage(filter, "normal", normalBuffer.buf.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
-    oidnSetSharedFilterImage(filter, "output", OIDNBuffer.buf.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetSharedFilterImage(filter, "color", frame.color.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetSharedFilterImage(filter, "albedo", frame.albedo.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetSharedFilterImage(filter, "normal", frame.normal.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetSharedFilterImage(filter, "output", frame.oidn.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
     oidnSetFilter1b(filter, "hdr", true);
     oidnCommitFilter(filter);
 
@@ -87,5 +82,58 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     oidnReleaseFilter(filter);
     oidnReleaseDevice(device);
 
-    OIDNBuffer.toPng("oidn_img.png");
+    frame.toPng("oidn_img.png", FrameBuffer::OIDN);
+}
+
+void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
+    Camera cam = scene.camera;
+    int resx = cam.resx;
+    int resy = cam.resy;
+    tracer = make_unique<EARSTracer>(scene);
+    auto albedoTracer = make_unique<AlbedoTracer>(scene);
+    auto normalTracer = make_unique<NormalTracer>(scene);
+    frame.enableOidn();
+    frame.setSpp(4);
+
+    for (int j = 0; j < resy; j++) {
+        for (int i = 0; i < resx; i++) {
+            Vec2i px(i, j);
+            sampler->startPath(i + j, 0xFFFF);
+            for (int i = 0; i < frame.spp; i++) {
+                frame.add(px, albedoTracer->trace(px, *sampler), FrameBuffer::ALBEDO);
+                frame.add(px, normalTracer->trace(px, *sampler), FrameBuffer::NORMAL);
+                frame.add(px, tracer->trace(px, *sampler), FrameBuffer::COLOR);
+            }
+        }
+        std::cout << "Completed row " << j << std::endl;
+    }
+
+    frame.normalize(FrameBuffer::ALBEDO);
+    frame.normalize(FrameBuffer::NORMAL);
+    frame.normalize(FrameBuffer::COLOR);
+
+    frame.toPng("albedo_img.png", FrameBuffer::ALBEDO);
+    frame.toPng("normal_img.png", FrameBuffer::NORMAL);
+
+    OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
+    oidnCommitDevice(device);
+    OIDNFilter filter = oidnNewFilter(device, "RT");
+    oidnSetSharedFilterImage(filter, "color", frame.color.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetSharedFilterImage(filter, "albedo", frame.albedo.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetSharedFilterImage(filter, "normal", frame.normal.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetSharedFilterImage(filter, "output", frame.oidn.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+    oidnSetFilter1b(filter, "hdr", true);
+    oidnCommitFilter(filter);
+
+    oidnExecuteFilter(filter);
+
+    const char* errorMessage;
+    if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
+        printf("Error: %s\n", errorMessage);
+
+    // Cleanup
+    oidnReleaseFilter(filter);
+    oidnReleaseDevice(device);
+
+    frame.toPng("oidn_img.png", FrameBuffer::OIDN);
 }

@@ -115,6 +115,7 @@ Vec3f PathTracer::lightSample(const Primitive& light, SurfaceScatterEvent& event
 
     Intersection intersection;
     IntersectionData data;
+
     Vec3f e = attenuatedEmission(light, sample.dist, intersection, data, bounce, ray);
     if (e == 0.0f)
         return Vec3f(0.0f);

@@ -14,7 +14,7 @@ public:
             dir(direction),
             t(0) {};
 
-    Ray scatter(const Vec3f& newPos, const Vec3f& newDir, float newNearT, float newFarT = F_INFTY) const {
+    static Ray scatter(const Vec3f& newPos, const Vec3f& newDir, float newNearT, float newFarT = F_INFTY) {
         Ray ray;
         ray.pos = newPos;
         ray.dir = newDir;
@@ -40,27 +40,28 @@ public:
     }
     
     [[nodiscard]] const Vec3f& tip() const {
-        return pos + dir * tf;
+        static const Vec3f tip = pos + dir * tf;
+        return tip;
     }
 
-    float tnear() {
+    [[nodiscard]] float tnear() const {
         return tn;
     }
 
-    float tfar() {
+    [[nodiscard]] float tfar() const {
         return tf;
     }
 
-    bool isPrimary() {
+    [[nodiscard]] bool isPrimary() const {
         return primary;
     }
 
-    void tnear(float tn) {
-        this->tn = tn;
+    void tnear(float tn_) {
+        this->tn = tn_;
     }
 
-    void tfar(float tf) {
-        this->tf = tf;
+    void tfar(float tf_) {
+        this->tf = tf_;
     }
 
     void setPrimary(bool isP) {
@@ -73,7 +74,7 @@ private:
     float t;
     float tn = F_NEAR_ZERO;
     float tf = F_INFTY;
-    bool primary;
+    bool primary{};
 };
 
 #endif
