@@ -18,6 +18,9 @@ public:
 
 class RayCastIntegrator : public Integrator {
 public:
+    RayCastIntegrator() {
+        sampler = std::unique_ptr<PathSampleGenerator>(new UniformPathSampler(0xBA5EBA11));
+    }
     void render(const Scene &scene, FrameBuffer &frame) override;
 };
 

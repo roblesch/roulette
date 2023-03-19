@@ -12,6 +12,7 @@ void RayCastIntegrator::render(const Scene &scene, FrameBuffer &frame) {
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);
+            sampler->startPath(i + j, 0xFFFF);
             frame.set(px, tracer->trace(px, *sampler));
         }
     }

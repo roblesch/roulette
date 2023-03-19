@@ -23,20 +23,7 @@ static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int act
 int main(int argc, char *argv[]) {
     Renderer renderer;
     renderer.loadTungstenJSON(argv[1]);
-    std::filesystem::remove("out.png");
     renderer.render();
-
-//#ifdef _WIN32
-//    //system("albedo_img.png");
-//    //system("normal_img.png");
-//    system("oidn_img.png");
-//    system("traced_img.png");
-//#elif __APPLE__
-//    //system("open albedo_img.png");
-//    //system("open normal_img.png");
-//    system("open oidn_img.png");
-//    system("open traced_img.png");
-//#endif
 
     GLFWwindow* window;
     GLuint vertex_buffer, vertex_shader, fragment_shader, program;
@@ -47,10 +34,23 @@ int main(int argc, char *argv[]) {
     if (!glfwInit())
         exit(EXIT_FAILURE);
 
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+#if defined(__APPLE__)
+    // GL 3.2 + GLSL 150
+    const char* glsl_version = "#version 150";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#else
+    // GL 3.0 + GLSL 130
+    const char* glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+    //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+#endif
 
-    window = glfwCreateWindow(1200, 900, argv[1], NULL, NULL);
+    window = glfwCreateWindow(1600, 900, "", NULL, NULL);
     if (!window) {
         glfwTerminate();
         exit(EXIT_FAILURE);
@@ -68,26 +68,30 @@ int main(int argc, char *argv[]) {
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    ImGui_ImplOpenGL3_Init("#version 330");
+    ImGui_ImplOpenGL3_Init(glsl_version);
 
     bool show_render_result = true;
 
     int tx_tab = 1;
     int gl_tx_resx = renderer.frame.resx;
     int gl_tx_resy = renderer.frame.resy;
-    auto color_buf = renderer.frame.tonemap(FrameBuffer::COLOR);
-    auto oidn_buf = renderer.frame.tonemap(FrameBuffer::OIDN);
     GLuint gl_tx_oidn, gl_tx_color;
+
+    auto color_buf = renderer.frame.tonemap(FrameBuffer::COLOR);
     glGenTextures(1, &gl_tx_color);
     glBindTexture(GL_TEXTURE_2D, gl_tx_color);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, gl_tx_resx, gl_tx_resy, 0, GL_RGB, GL_UNSIGNED_BYTE, color_buf.data());
-    glGenTextures(1, &gl_tx_oidn);
-    glBindTexture(GL_TEXTURE_2D, gl_tx_oidn);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, gl_tx_resx, gl_tx_resy, 0, GL_RGB, GL_UNSIGNED_BYTE, oidn_buf.data());
+
+    if (renderer.frame.useOidn) {
+        auto oidn_buf = renderer.frame.tonemap(FrameBuffer::OIDN);
+        glGenTextures(1, &gl_tx_oidn);
+        glBindTexture(GL_TEXTURE_2D, gl_tx_oidn);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, gl_tx_resx, gl_tx_resy, 0, GL_RGB, GL_UNSIGNED_BYTE, oidn_buf.data());
+    }
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -95,16 +99,18 @@ int main(int argc, char *argv[]) {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         if (show_render_result) {
-            ImGui::Begin("OpenGL Texture Text");
+            ImGui::Begin(argv[1]);
             ImGui::SameLine();
             if (ImGui::Button("color", ImVec2(150, 25)))
             {
                 tx_tab = 1;
             }
-            ImGui::SameLine();
-            if (ImGui::Button("oidn", ImVec2(150, 25)))
-            {
-                tx_tab = 2;
+            if (renderer.frame.useOidn) {
+                ImGui::SameLine();
+                if (ImGui::Button("oidn", ImVec2(150, 25)))
+                {
+                    tx_tab = 2;
+                }
             }
             switch (tx_tab) {
             case 1:
