@@ -40,7 +40,6 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     auto albedoTracer = make_unique<AlbedoTracer>(scene);
     auto normalTracer = make_unique<NormalTracer>(scene);
     frame.enableOidn();
-    frame.setSpp(4);
 
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
@@ -93,7 +92,6 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     auto albedoTracer = make_unique<AlbedoTracer>(scene);
     auto normalTracer = make_unique<NormalTracer>(scene);
     frame.enableOidn();
-    frame.setSpp(4);
 
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
