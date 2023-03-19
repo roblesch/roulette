@@ -7,3 +7,9 @@
 [submodule "renderer/ext/stb"]
 	path = renderer/ext/stb
 	url = git@github.com:roblesch/stb.git
+[submodule "renderer/ext/glfw"]
+	path = renderer/ext/glfw
+	url = git@github.com:roblesch/glfw.git
+[submodule "renderer/ext/imgui"]
+	path = renderer/ext/imgui
+	url = git@github.com:roblesch/imgui.git

@@ -27,6 +27,11 @@ find_package(OpenImageDenoise REQUIRED PATHS ${ONEAPI_ROOT})
 include_directories(${OIDN_INCLUDE_DIR} ${OIDN_ROOT})
 link_directories(${OIDN_LIB_DIR})
 
+find_package(OpenGL REQUIRED)
+include_directories(
+    ${OPENGL_INCLUDE_DIRS}
+)
+
 add_library(core
         "earstracer.cpp"
         "camera.h"
@@ -56,4 +61,8 @@ add_library(core
 target_link_libraries(core
         nlohmann_json
         pugixml
-        OpenImageDenoise)
+        OpenImageDenoise
+        glad
+        glfw
+        OpenGL::GL
+        imgui)

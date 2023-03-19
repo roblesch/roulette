@@ -83,46 +83,30 @@ public:
 
     Vec3f get(Vec2i px, buffer b=COLOR) { return get(px.y() * resx + px.x(), b); }
 
-    Vec3c Rgb(int px, buffer b=COLOR) {
-        Vec3f pixel = get(px, b);
-        return {
-            static_cast<uint8>(255.0f * clamp(pixel.r())),
-            static_cast<uint8>(255.0f * clamp(pixel.g())),
-            static_cast<uint8>(255.0f * clamp(pixel.b()))
-        };
-    }
+    void normalize(buffer b = COLOR);
 
-    Vec3c Rgb(Vec2i px, buffer b=COLOR) { return Rgb(px.y() * resx + px.x(), b); }
+    std::vector<Vec3c> tonemap(std::vector<Vec3f> hdr);
 
-    Vec4c Rgba(int px) {
-        Vec3f pixel = get(px);
-        return {
-            static_cast<uint8>(255.0f * clamp(pixel.r())),
-            static_cast<uint8>(255.0f * clamp(pixel.g())),
-            static_cast<uint8>(255.0f * clamp(pixel.b())),
-            255
-        };
-    }
-
-    Vec4c Rgba(Vec2i px) { return Rgba(px.y() * resx + px.x()); }
-
-    void normalize(buffer b=COLOR) {
-        for (int i = 0; i < resx*resy; i++) {
-            Vec3f v = get(i, b) / (float) spp;
-            set(i, v, b);
+    std::vector<Vec3c> tonemap(buffer b) {
+        switch (b) {
+        case COLOR:
+            return tonemap(color);
+        case ALBEDO:
+            return tonemap(albedo);
+        case NORMAL:
+            return tonemap(normal);
+        case OIDN:
+            return tonemap(oidn);
         }
     }
-
-    void toPpm(const char *filename);
 
     void toPng(const char *filename, buffer b=COLOR);
 
     bool useOidn;
     int resx{};
     int resy{};
-    vector<Vec3f> color;
     int spp;
-    // oidn
+    vector<Vec3f> color;
     vector<Vec3f> albedo;
     vector<Vec3f> normal;
     vector<Vec3f> oidn;
