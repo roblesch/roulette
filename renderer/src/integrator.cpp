@@ -52,7 +52,7 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                 frame.add(px, tracer->trace(px, *sampler), FrameBuffer::COLOR);
             }
         }
-        std::cout << "Completed row " << j << std::endl;
+        std::cout << "Completed row " << j << "\r";
     }
 
     frame.normalize(FrameBuffer::ALBEDO);
@@ -104,7 +104,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                 frame.add(px, tracer->trace(px, *sampler), FrameBuffer::COLOR);
             }
         }
-        std::cout << "Completed row " << j << std::endl;
+        std::cout << "Completed row " << j << "\r";
     }
 
     frame.normalize(FrameBuffer::ALBEDO);

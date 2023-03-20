@@ -97,7 +97,7 @@ void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<In
         }
     }
 
-    scene = Scene(camera, materials, primitives, lights);
+    scene = Scene(camera, {}, materials, primitives, lights);
     frame = FrameBuffer(camera.resx, camera.resy);
     integrator = make_unique<PathTraceIntegrator>();
 }
@@ -111,6 +111,7 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
     }
 
     Camera camera{};
+    AABB aabb{};
     unordered_map<string, shared_ptr<Material>> materials;
     unordered_map<string, shared_ptr<Primitive>> primitives;
     unordered_map<string, shared_ptr<Primitive>> lights;
@@ -149,6 +150,8 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
             shape = make_shared<Cube>(pos, scale, rot);
         }
 
+        shape->setbb(aabb);
+
         primitives[name] = make_shared<Primitive>(
                 shape,
                 materials[name],
@@ -179,6 +182,6 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
         }
     }
 
-    scene = Scene(camera, materials, primitives, lights);
+    scene = Scene(camera, aabb, materials, primitives, lights);
     frame = FrameBuffer(camera.resx, camera.resy);
 }

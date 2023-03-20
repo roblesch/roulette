@@ -105,8 +105,12 @@ private:
         return result;
     }
 
-    Vec3f mapPointToUnitCube(const Vec3f& vec) {
-        return {};
+    Vec3f mapPointToUnitCube(const Vec3f& point) {
+        AABB aabb = scene->bounds;
+        Vec3f size = aabb.getExtents();
+        Vec3f result = point - aabb.min;
+        result /= size;
+        return result;
     }
 
     struct LiInput {
@@ -142,9 +146,11 @@ private:
             return reflected + emitted;
         }
     };
+
     LiOutput Li(LiInput &input, PathSampleGenerator& sampler);
 
     EARS::Octtree cache;
+    EARS::RRSMethod rrs;
 };
 
 #endif

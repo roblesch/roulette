@@ -5,13 +5,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-inline Vec3f v3fmax(Vec3f a, Vec3f b) {
-    float x = a.x() > b.x() ? a.x() : b.x();
-    float y = a.y() > b.y() ? a.y() : b.y();
-    float z = a.z() > b.z() ? a.z() : b.z();
-    return { x, y, z };
-}
-
 void FrameBuffer::normalize(buffer b) {
     for (int i = 0; i < resx * resy; i++) {
         Vec3f v = get(i, b) / (float)spp;

@@ -43,10 +43,10 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
 
     //const bool bsdfHasSmoothComponent = true;
     //Vec3f albedo = idata.primitive->material->albedo;
-    //const int histogramBinIndex = mapOutgoingDirectionToHistogramBin(input.ray.d());
-    //const EARS::Octtree::SamplingNode* samplingNode = nullptr;
-    //EARS::Octtree::TrainingNode* trainingNode = nullptr;
-    //cache.lookup(mapPointToUnitCube(its.data->p), histogramBinIndex, samplingNode, trainingNode);
+    const int histogramBinIndex = mapOutgoingDirectionToHistogramBin(input.ray.d());
+    const EARS::Octtree::SamplingNode* samplingNode = nullptr;
+    EARS::Octtree::TrainingNode* trainingNode = nullptr;
+    cache.lookup(mapPointToUnitCube(its.data->p), histogramBinIndex, samplingNode, trainingNode);
     const float splittingFactor = 1.0f;
 
     const int numSamples = 1;

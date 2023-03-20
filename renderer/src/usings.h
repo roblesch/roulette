@@ -27,4 +27,20 @@ inline float r_to_d(float r) { return r * (180.0f / PI); }
 
 inline float randf() { return static_cast<float>(rand()) / static_cast <float> (RAND_MAX); }
 
+inline Vec3f v3fmax(Vec3f a, Vec3f b) {
+    return {
+        a.x() > b.x() ? a.x() : b.x(),
+        a.y() > b.y() ? a.y() : b.y(),
+        a.z() > b.z() ? a.z() : b.z()
+    };
+}
+
+inline Vec3f v3fmin(Vec3f a, Vec3f b) {
+    return {
+        a.x() < b.x() ? a.x() : b.x(),
+        a.y() < b.y() ? a.y() : b.y(),
+        a.z() < b.z() ? a.z() : b.z()
+    };
+}
+
 #endif
