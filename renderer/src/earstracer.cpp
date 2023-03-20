@@ -23,6 +23,7 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
     SurfaceScatterEvent its;
 
     bool hit = scene->intersect(input.ray, iinfo, idata);
+    its = makeLocalScatterEvent(iinfo, idata, input.ray, &sampler);
     output.cost += EARS::COST_BSDF;
 
     if (!hit) {
@@ -68,8 +69,6 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
         Vec3f irradianceEstimate(0.0f);
         Vec3f LrEstimate(0.0f);
         float LrCost(0.0f);
-
-        its = makeLocalScatterEvent(iinfo, idata, input.ray, &sampler);
 
         /* ==================================================================== */
         /*                     Direct illumination sampling                     */
