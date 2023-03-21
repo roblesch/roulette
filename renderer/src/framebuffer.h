@@ -27,6 +27,8 @@ public:
         }
     };
 
+    void incSpp() { spp += 1; }
+
     void setSpp(int spp_) { spp = spp_; }
 
     void enableOidn() {

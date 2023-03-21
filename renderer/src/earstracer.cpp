@@ -43,28 +43,24 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
     }
 
     //const bool bsdfHasSmoothComponent = true;
-    //Vec3f albedo = idata.primitive->material->albedo;
+    Vec3f albedo = idata.primitive->material->albedo;
     const int histogramBinIndex = mapOutgoingDirectionToHistogramBin(input.ray.d());
     const EARS::Octtree::SamplingNode* samplingNode = nullptr;
     EARS::Octtree::TrainingNode* trainingNode = nullptr;
     cache.lookup(mapPointToUnitCube(its.data->p), histogramBinIndex, samplingNode, trainingNode);
-    const float splittingFactor = 1.0f;
 
-    const int numSamples = 1;
+//    const float splittingFactor = 1.0f;
+    const float splittingFactor = rrs.evaluate(
+        samplingNode, imageEarsFactor,
+        albedo, input.weight, 0.0f, true,
+        input.depth
+    );
+
     Vec3f lrSum(0.0f);
     Vec3f lrSumSquares(0.0f);
     float lrSumCosts = 0.0f;
 
-    float roulettePdf = abs(input.weight).max();
-    if (roulettePdf == 0.0f)
-        return output;
-    if (input.depth > 2 && roulettePdf < 0.1f) {
-        if (sampler.nextBoolean(DiscreteRouletteSample, roulettePdf))
-            input.weight /= roulettePdf;
-        else
-            return output;
-    }
-
+    const int numSamples = int(splittingFactor + sampler.next1D());
     for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
         Vec3f irradianceEstimate(0.0f);
         Vec3f LrEstimate(0.0f);
@@ -166,7 +162,19 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
 
         output.reflected += LrEstimate / splittingFactor;
         output.cost += LrCost;
+
+        lrSum += LrEstimate;
+        lrSumSquares += LrEstimate * LrEstimate;
+        lrSumCosts += LrCost;
     }
+
+    trainingNode->splatLrEstimate(
+        lrSum,
+        lrSumSquares,
+        lrSumCosts,
+        numSamples
+    );
+
     return output;
 }
 

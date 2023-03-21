@@ -48,6 +48,7 @@ public:
     virtual bool nextBoolean(SampleBlock block, float pTrue) = 0;
     virtual int nextDiscrete(SampleBlock block, int numChoices) = 0;
     virtual float next1D(SampleBlock block) = 0;
+    virtual float next1D() = 0;
     virtual Vec2f next2D(SampleBlock block) = 0;
 };
 
@@ -145,6 +146,10 @@ public:
         return int(_sampler.next1D() * (float)numChoices);
     }
     float next1D(SampleBlock /*block*/) final
+    {
+        return _sampler.next1D();
+    }
+    float next1D() final
     {
         return _sampler.next1D();
     }

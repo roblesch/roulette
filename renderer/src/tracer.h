@@ -82,7 +82,7 @@ class EARSTracer : public PathTracer {
 public:
     EARSTracer(const Scene& scene) : PathTracer(scene) {};
     Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
-private:
+
     Vec2f dirToCanonical(const Vec3f& d) {
         if (!std::isfinite(d.x()) || !std::isfinite(d.y()) || !std::isfinite(d.z())) {
             return { 0, 0 };
@@ -147,10 +147,17 @@ private:
         }
     };
 
+    void updateImageStatistics(float actualTotalCost) {
+        imageStatistics.reset(actualTotalCost);
+        imageEarsFactor = imageStatistics.earsFactor();
+    }
+
     LiOutput Li(LiInput &input, PathSampleGenerator& sampler);
 
     EARS::Octtree cache;
+    EARS::ImageStatistics imageStatistics;
     EARS::RRSMethod rrs;
+    float imageEarsFactor;
 };
 
 #endif
