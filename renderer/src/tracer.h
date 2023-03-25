@@ -80,7 +80,12 @@ public:
 
 class EARSTracer : public PathTracer {
 public:
-    EARSTracer(const Scene& scene) : PathTracer(scene) {};
+    EARSTracer(const Scene& scene) : PathTracer(scene) {
+        imageEstimate = Film(scene.camera.resolution());
+        for (int i = 0; i < imageEstimate.resx * imageEstimate.resy; i++) {
+            imageEstimate.add(i, Vec3f(0.5f));
+        }
+    };
     Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
 
     Vec2f dirToCanonical(const Vec3f& d) {
@@ -157,6 +162,7 @@ public:
     EARS::Octtree cache;
     EARS::ImageStatistics imageStatistics;
     EARS::RRSMethod rrs;
+    Film imageEstimate;
     float imageEarsFactor;
 };
 

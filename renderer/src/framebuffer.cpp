@@ -13,7 +13,7 @@ void FrameBuffer::normalize(buffer b) {
 }
 
 std::vector<Vec3c> FrameBuffer::tonemap(std::vector<Vec3f> hdr) {
-    vector<Vec3c> ldr(resx * resy);
+    std::vector<Vec3c> ldr(resx * resy);
     for (int i = 0; i < ldr.size(); i++) {
         Vec3f a = v3fmax(hdr[i], Vec3f(0.0f));
         Vec3f x = v3fmax(a - 0.004f, Vec3f(0.0f));
@@ -24,6 +24,6 @@ std::vector<Vec3c> FrameBuffer::tonemap(std::vector<Vec3f> hdr) {
 }
 
 void FrameBuffer::toPng(const char *filename, buffer b) {
-    vector<Vec3c> ldr = tonemap(b);
+    std::vector<Vec3c> ldr = tonemap(b);
     stbi_write_png(filename, resx, resy, 3, ldr.data(), resx * 3);
 }

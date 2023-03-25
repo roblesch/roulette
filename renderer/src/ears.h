@@ -14,6 +14,8 @@
 
 #include "usings.h"
 
+#include "framebuffer.h"
+
 #include <array>
 #include <vector>
 
@@ -282,13 +284,24 @@ struct RRSMethod {
         useAbsoluteThroughput = true;
     }
 
-    static RRSMethod Default() {
+    static RRSMethod EARS() {
         /// parse parameters
         RRSMethod rrs;
         rrs.splittingMin = 0.05f;
         rrs.splittingMax = 20;
-        rrs.rrDepth = 5;
+        rrs.rrDepth = 1;
+        rrs.technique = EEARS;
+        rrs.useAbsoluteThroughput = false;
+        return rrs;
+    }
+
+    static RRSMethod ADRRS() {
+        RRSMethod rrs;
+        rrs.splittingMin = 0.05f;
+        rrs.splittingMax = 20;
+        rrs.rrDepth = 2;
         rrs.technique = EADRRS;
+        rrs.useAbsoluteThroughput = false;
         return rrs;
     }
 
@@ -675,8 +688,11 @@ struct ImageStatistics {
     }
 
     void operator+=(const OutlierRejectedAverage &blockStatistics) {
-        std::lock_guard<std::mutex> lock(m_averageMutex);
         m_average += blockStatistics;
+    }
+
+    void operator+=(const OutlierRejectedAverage::Sample sample) {
+        m_average += sample;
     }
 
     void splatDepthAcc(float depthAcc, float depthWeight, float primarySplit, float primarySamples) {
@@ -695,7 +711,6 @@ struct ImageStatistics {
     }
 
 private:
-    std::mutex m_averageMutex;
     OutlierRejectedAverage m_average;
     float m_depthAcc{0.f};
     float m_depthWeight{0.f};
@@ -706,6 +721,86 @@ private:
         Vec3f squareError;
         float cost;
     } m_lastStats;
+};
+
+struct WeightedBitmapAccumulator {
+    void clear() {
+        m_scrap = nullptr;
+        m_bitmap = nullptr;
+        m_spp = 0;
+        m_weight = 0;
+    }
+
+    bool hasData() const {
+        return m_weight > 0;
+    }
+
+    void add(const Film* film, int spp, float avgVariance = 1) {
+        if (avgVariance == 0 && m_weight > 0) {
+            // SLog(EError, "Cannot add an image with unknown variance to an already populated accumulator");
+            return;
+        }
+
+        const Vec2i size = film->size();
+
+        if (m_scrap == nullptr) {
+            m_scrap = new Film(size.x(), size.y());
+        }
+        for (int i = 0; i < film->buffer.size(); i++) {
+            m_scrap->buffer[i] = film->buffer[i];
+        }
+
+        if (!m_bitmap) {
+            m_bitmap = new Film(size.x(), size.y());
+        }
+
+        if (avgVariance > 0 && m_weight == 0 && m_spp > 0) {
+            /// reweight previous frames that had unknown variance with our current variance estimate
+            const float reweight = 1 / avgVariance;
+            for (auto &v : m_bitmap->buffer) {
+                v *= reweight;
+            }
+            m_weight += m_spp * reweight;
+        }
+
+        const float weight = avgVariance > 0 ? spp / avgVariance : spp;
+        for (int i = 0; i < m_bitmap->buffer.size(); i++) {
+            m_bitmap->buffer[i] += m_scrap->buffer[i] * weight;
+        }
+
+        m_weight += avgVariance > 0 ? weight : 0;
+        m_spp += spp;
+    }
+
+    void develop(Film* dest) const {
+        if (!m_bitmap) {
+             // Log(EWarn, "Cannot develop bitmap, as no data is available");
+            return;
+        }
+
+        const Vec2i size = m_bitmap->size();
+
+        const float weight = m_weight == 0 ? m_spp : m_weight;
+        for (int i = 0; i < dest->buffer.size(); i++) {
+            dest->buffer[i] = weight > 0 ? m_bitmap->buffer[i] / weight : Vec3f(0.0f);
+        }
+    }
+
+    //void develop(const fs::path& path) const {
+    //    if (!m_scrap) {
+    //        SLog(EWarn, "Cannot develop bitmap, as no data is available");
+    //        return;
+    //    }
+
+    //    develop(m_scrap.get());
+    //    m_scrap->write(path);
+    //}
+
+private:
+    Film* m_scrap = nullptr;
+    Film* m_bitmap = nullptr;
+    float m_weight;
+    int m_spp;
 };
 
 };

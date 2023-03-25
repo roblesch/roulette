@@ -62,6 +62,10 @@ public:
             up(up),
             transform(Mat4f::lookAt(eye, center - eye, up)) {};
 
+    Vec2i resolution() const {
+        return { resx, resy };
+    }
+
     void samplePosition(PositionSample& sample, PathSampleGenerator &sampler) const {
         sample.p = eye;
         sample.weight = Vec3f(1.0f);

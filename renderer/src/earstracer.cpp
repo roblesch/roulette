@@ -3,8 +3,7 @@
 /**
  * EARS.h
  *
- * Adapted from Alexander Rath's original implementation 3/5/2023
- *
+ * Adapted from Alexander Rath's original implementation
  * https://graphics.cg.uni-saarland.de/publications/rath-sig2022.html
  * https://github.com/iRath96/ears/blob/master/mitsuba/src/integrators/path/recursive_path.cpp
  * https://github.com/iRath96/ears/blob/master/LICENSE
@@ -175,6 +174,10 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
         numSamples
     );
 
+    if (output.depthAcc == 0) {
+        output.markAsLeaf(input.depth);
+    }
+
     return output;
 }
 
@@ -195,7 +198,19 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     Vec3f throughput(1.0f);
     int bounce = 0;
     EARSTracer::LiInput input {throughput, ray, bounce, true};
-
     EARSTracer::LiOutput output = Li(input, sampler);
+
+    const Vec3f pixelEstimate = imageEstimate.get(px);
+    const Vec3f metricNorm = rrs.useAbsoluteThroughput ? Vec3f(1.0f) : pixelEstimate + Vec3f(1e-2);
+    const Vec3f expectedContribution = pixelEstimate / metricNorm;
+    const Vec3f pixelContribution = (Vec3f(1.0f) / metricNorm) * output.totalContribution();
+    const Vec3f diff = pixelContribution - expectedContribution;
+
+    imageStatistics += EARS::OutlierRejectedAverage::Sample{
+        diff * diff,
+        output.cost
+    };
+    imageStatistics.splatDepthAcc(output.depthAcc, output.depthWeight, output.numSamples, 1);
+
     return output.totalContribution();
 }

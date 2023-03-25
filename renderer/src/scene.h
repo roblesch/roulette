@@ -15,9 +15,9 @@ public:
 
     Scene(Camera cam,
           AABB aabb,
-          unordered_map<string, shared_ptr<Material>> mats,
-          unordered_map<string, shared_ptr<Primitive>> prims,
-          unordered_map<string, shared_ptr<Primitive>> lights) :
+          unordered_map<std::string, shared_ptr<Material>> mats,
+          unordered_map<std::string, shared_ptr<Primitive>> prims,
+          unordered_map<std::string, shared_ptr<Primitive>> lights) :
             camera(cam),
             bounds(aabb),
             materials(std::move(mats)),
@@ -42,9 +42,9 @@ public:
 
     Camera camera{};
     AABB bounds;
-    unordered_map<string, shared_ptr<Material>> materials;
-    unordered_map<string, shared_ptr<Primitive>> primitives;
-    unordered_map<string, shared_ptr<Primitive>> lights;
+    unordered_map<std::string, shared_ptr<Material>> materials;
+    unordered_map<std::string, shared_ptr<Primitive>> primitives;
+    unordered_map<std::string, shared_ptr<Primitive>> lights;
 };
 
 #endif
