@@ -134,18 +134,18 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
     std::chrono::steady_clock::time_point renderStartTime = std::chrono::steady_clock::now();
 
-    for (iteration = 1; iteration <= 30; iteration++) {
+    for (iteration = 0; iteration <= 30; iteration++) {
         const float timeBeforeIter = computeElapsedSeconds(renderStartTime);
         if (timeBeforeIter >= budget) {
             break;
         }
 
-        std::cout << "Iteration : " << iteration << " Avg variance : " << etracer.imageStatistics.squareError().avg() << " Image EARS Factor : " << etracer.imageEarsFactor << " Elapsed : " << timeBeforeIter << std::endl;
-
         estimate.clear();
 
+        bool isPretraining = iteration < 3;
+
         // don't use learning based methods unless caches have begun to converge
-        if (iteration < 3) {
+        if (isPretraining) {
             etracer.rrs = EARS::RRSMethod::Classic();
         }
         else {
@@ -169,12 +169,16 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
             for (int i = 0; i < resx; i++) {
                 Vec2i px(i, j);
                 Vec3f r(0.0f);
-                //for (int ss = 0; ss < 4; ss++) {
-                //    r += etracer.trace(px, *sampler);
-                //}
-                sampler->startPath(i + j, 0xFFFF);
-                //estimate.add(px, r / 4.0f);
-                estimate.add(px, etracer.trace(px, *sampler));
+                if (isPretraining) {
+                    for (int ss = 0; ss < 5; ss++) {
+                        sampler->startPath(i + j, 0xFFFF);
+                        r += etracer.trace(px, *sampler);
+                    }
+                    estimate.add(px, r / 5.0f);
+                } else {
+                    sampler->startPath(i + j, 0xFFFF);
+                    estimate.add(px, etracer.trace(px, *sampler));
+                }
             }
             std::cout << "Completed row " << j << "\r";
         }
@@ -192,8 +196,9 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
             //sampleTime = computeElapsedSeconds(renderStartTime) - timeBeforeIter;
             //std::cout << std::endl << "sampleTime : " << sampleTime << " spp : " << spp << std::endl;
         //} while (sampleTime < iterationTime && computeElapsedSeconds(renderStartTime) < budget);
-
+        float beforeReject = etracer.imageStatistics.squareError().avg();
         etracer.imageStatistics.applyOutlierRejection();
+        float afterReject = etracer.imageStatistics.squareError().avg();
 
         // update caches
         etracer.cache.build(true);
@@ -215,20 +220,23 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         oidnCommitFilter(filter);
         oidnExecuteFilter(filter);
 
-        frame.color = etracer.imageEstimate.buffer;
-        auto fname = std::format("iteration_{}_denoise.png", iteration);
-        frame.toPng(fname.c_str());
-
-        frame.color = estimate.buffer;
-        fname = std::format("iteration_{}_estimate.png", iteration);
-        frame.toPng(fname.c_str());
-
         const char* errorMessage;
         if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
             printf("Error: %s\n", errorMessage);
 
-        if (iteration & 8 == 7)
+        char fname[32];
+        frame.color = etracer.imageEstimate.buffer;
+        snprintf(fname, sizeof(fname), "iteration_%d_denoise.png", iteration);
+        frame.toPng(fname);
+
+        frame.color = estimate.buffer;
+        snprintf(fname, sizeof(fname), "iteration_%d_estimate.png", iteration);
+        frame.toPng(fname);
+
+        if (iteration % 8 == 7)
             iterationTime *= 2;
+
+        std::cout << "Iteration : " << iteration << " Avg variance : " << etracer.imageStatistics.squareError().avg() << " Image EARS Factor : " << etracer.imageEarsFactor << " Elapsed : " << timeBeforeIter << std::endl;
     }
 
     oidnReleaseDevice(device);

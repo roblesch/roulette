@@ -206,11 +206,13 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     const Vec3f pixelContribution = (Vec3f(1.0f) / metricNorm) * output.totalContribution();
     const Vec3f diff = pixelContribution - expectedContribution;
 
-    imageStatistics += EARS::OutlierRejectedAverage::Sample{
+    // TODO: compute image in blocks and accumulate statistics
+    blockStatistics += EARS::OutlierRejectedAverage::Sample{
         diff * diff,
         output.cost
     };
-    imageStatistics.splatDepthAcc(output.depthAcc, output.depthWeight, output.numSamples, 1);
 
+    imageStatistics += blockStatistics;
+    imageStatistics.splatDepthAcc(output.depthAcc, output.depthWeight, output.numSamples, 1);
     return output.totalContribution();
 }

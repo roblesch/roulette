@@ -81,6 +81,7 @@ public:
 class EARSTracer : public PathTracer {
 public:
     EARSTracer(const Scene& scene) : PathTracer(scene) {
+        blockStatistics.resize(10);
         imageEstimate = Film(scene.camera.resolution());
         for (int i = 0; i < imageEstimate.resx * imageEstimate.resy; i++) {
             imageEstimate.add(i, Vec3f(0.5f));
@@ -161,6 +162,7 @@ public:
 
     EARS::Octtree cache;
     EARS::ImageStatistics imageStatistics;
+    EARS::OutlierRejectedAverage blockStatistics;
     EARS::RRSMethod rrs;
     Film imageEstimate;
     float imageEarsFactor;

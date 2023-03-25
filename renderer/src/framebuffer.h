@@ -109,6 +109,9 @@ public:
         case NORMAL:
             normal[px] += v;
             break;
+        case OIDN:
+            oidn[px] += v;
+            break;
         }
     }
 
@@ -124,6 +127,9 @@ public:
             break;
         case NORMAL:
             normal[px] = v;
+            break;
+        case OIDN:
+            oidn[px] = v;
             break;
         }
     }

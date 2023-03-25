@@ -691,10 +691,6 @@ struct ImageStatistics {
         m_average += blockStatistics;
     }
 
-    void operator+=(const OutlierRejectedAverage::Sample sample) {
-        m_average += sample;
-    }
-
     void splatDepthAcc(float depthAcc, float depthWeight, float primarySplit, float primarySamples) {
         m_depthAcc += depthAcc;
         m_depthWeight += depthWeight;
