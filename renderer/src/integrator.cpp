@@ -170,12 +170,14 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                 Vec2i px(i, j);
                 Vec3f r(0.0f);
                 if (isPretraining) {
+                    spp = 5;
                     for (int ss = 0; ss < 5; ss++) {
                         sampler->startPath(i + j, 0xFFFF);
                         r += etracer.trace(px, *sampler);
                     }
                     estimate.add(px, r / 5.0f);
                 } else {
+                    spp = 1;
                     sampler->startPath(i + j, 0xFFFF);
                     estimate.add(px, etracer.trace(px, *sampler));
                 }
