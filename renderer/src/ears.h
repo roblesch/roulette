@@ -239,7 +239,6 @@ public:
         float weightSum = 0;
         for (int bin = 0; bin < BIN_COUNT; ++bin)
             weightSum += sum[bin].getWeight();
-        float asdf = weightSum;
     }
 
     void lookup(Vec3f pos, int bin, const SamplingNode *&sampling, TrainingNode *&training) {
