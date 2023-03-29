@@ -34,7 +34,7 @@ public:
     struct Configuration {
         float minimumLeafWeightForSampling = 40000;
         float minimumLeafWeightForTraining = 20000;
-        float leafDecay = 0; /// set to 0 for hard reset after an iteration, 1 for no reset at all
+        float leafDecay = 0.5; /// set to 0 for hard reset after an iteration, 1 for no reset at all
         long maxNodeCount = 0;
     };
 
@@ -239,6 +239,7 @@ public:
         float weightSum = 0;
         for (int bin = 0; bin < BIN_COUNT; ++bin)
             weightSum += sum[bin].getWeight();
+        float asdf = weightSum;
     }
 
     void lookup(Vec3f pos, int bin, const SamplingNode *&sampling, TrainingNode *&training) {

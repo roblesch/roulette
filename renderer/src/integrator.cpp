@@ -127,7 +127,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
     float budget = 300.0f;
     float until = 0;
-    int spp = 0;
+    int spp = -1;
     int iteration;
     float iterationTime = 10;
     etracer.cache.configuration.leafDecay = 1;
@@ -137,7 +137,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     for (iteration = 0; iteration <= 30; iteration++) {
         const float timeBeforeIter = computeElapsedSeconds(renderStartTime);
         if (timeBeforeIter >= budget) {
-            break;
+            //break;
         }
 
         estimate.clear();
@@ -170,12 +170,12 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                 Vec2i px(i, j);
                 Vec3f r(0.0f);
                 if (isPretraining) {
-                    spp = 5;
-                    for (int ss = 0; ss < 5; ss++) {
+                    spp = 16;
+                    for (int ss = 0; ss < spp; ss++) {
                         sampler->startPath(i + j, 0xFFFF);
                         r += etracer.trace(px, *sampler);
                     }
-                    estimate.add(px, r / 5.0f);
+                    estimate.add(px, r / spp);
                 } else {
                     spp = 1;
                     sampler->startPath(i + j, 0xFFFF);
@@ -198,9 +198,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
             //sampleTime = computeElapsedSeconds(renderStartTime) - timeBeforeIter;
             //std::cout << std::endl << "sampleTime : " << sampleTime << " spp : " << spp << std::endl;
         //} while (sampleTime < iterationTime && computeElapsedSeconds(renderStartTime) < budget);
-        float beforeReject = etracer.imageStatistics.squareError().avg();
         etracer.imageStatistics.applyOutlierRejection();
-        float afterReject = etracer.imageStatistics.squareError().avg();
 
         // update caches
         etracer.cache.build(true);
