@@ -3,8 +3,7 @@
 /**
  * EARS.h
  *
- * Adapted from Alexander Rath's original implementation 3/5/2023
- *
+ * Adapted from Alexander Rath's original implementation
  * https://graphics.cg.uni-saarland.de/publications/rath-sig2022.html
  * https://github.com/iRath96/ears/blob/master/mitsuba/src/integrators/path/recursive_path.cpp
  * https://github.com/iRath96/ears/blob/master/LICENSE
@@ -23,6 +22,7 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
     SurfaceScatterEvent its;
 
     bool hit = scene->intersect(input.ray, iinfo, idata);
+    its = makeLocalScatterEvent(iinfo, idata, input.ray, &sampler);
     output.cost += EARS::COST_BSDF;
 
     if (!hit) {
@@ -42,34 +42,28 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
     }
 
     //const bool bsdfHasSmoothComponent = true;
-    //Vec3f albedo = idata.primitive->material->albedo;
-    //const int histogramBinIndex = mapOutgoingDirectionToHistogramBin(input.ray.d());
-    //const EARS::Octtree::SamplingNode* samplingNode = nullptr;
-    //EARS::Octtree::TrainingNode* trainingNode = nullptr;
-    //cache.lookup(mapPointToUnitCube(its.data->p), histogramBinIndex, samplingNode, trainingNode);
-    const float splittingFactor = 1.0f;
+    Vec3f albedo = idata.primitive->material->albedo;
+    const int histogramBinIndex = mapOutgoingDirectionToHistogramBin(input.ray.d());
+    const EARS::Octtree::SamplingNode* samplingNode = nullptr;
+    EARS::Octtree::TrainingNode* trainingNode = nullptr;
+    cache.lookup(mapPointToUnitCube(its.data->p), histogramBinIndex, samplingNode, trainingNode);
 
-    const int numSamples = 1;
+//    const float splittingFactor = 1.0f;
+    const float splittingFactor = rrs.evaluate(
+        samplingNode, imageEarsFactor,
+        albedo, input.weight, 0.0f, true,
+        input.depth
+    );
+
     Vec3f lrSum(0.0f);
     Vec3f lrSumSquares(0.0f);
     float lrSumCosts = 0.0f;
 
-    float roulettePdf = abs(input.weight).max();
-    if (roulettePdf == 0.0f)
-        return output;
-    if (input.depth > 2 && roulettePdf < 0.1f) {
-        if (sampler.nextBoolean(DiscreteRouletteSample, roulettePdf))
-            input.weight /= roulettePdf;
-        else
-            return output;
-    }
-
+    const int numSamples = int(splittingFactor + sampler.next1D());
     for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
         Vec3f irradianceEstimate(0.0f);
         Vec3f LrEstimate(0.0f);
         float LrCost(0.0f);
-
-        its = makeLocalScatterEvent(iinfo, idata, input.ray, &sampler);
 
         /* ==================================================================== */
         /*                     Direct illumination sampling                     */
@@ -167,7 +161,23 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
 
         output.reflected += LrEstimate / splittingFactor;
         output.cost += LrCost;
+
+        lrSum += LrEstimate;
+        lrSumSquares += LrEstimate * LrEstimate;
+        lrSumCosts += LrCost;
     }
+
+    trainingNode->splatLrEstimate(
+        lrSum,
+        lrSumSquares,
+        lrSumCosts,
+        numSamples
+    );
+
+    if (output.depthAcc == 0) {
+        output.markAsLeaf(input.depth);
+    }
+
     return output;
 }
 
@@ -188,7 +198,21 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     Vec3f throughput(1.0f);
     int bounce = 0;
     EARSTracer::LiInput input {throughput, ray, bounce, true};
-
     EARSTracer::LiOutput output = Li(input, sampler);
+
+    const Vec3f pixelEstimate = imageEstimate.get(px);
+    const Vec3f metricNorm = rrs.useAbsoluteThroughput ? Vec3f(1.0f) : pixelEstimate + Vec3f(1e-2);
+    const Vec3f expectedContribution = pixelEstimate / metricNorm;
+    const Vec3f pixelContribution = (Vec3f(1.0f) / metricNorm) * output.totalContribution();
+    const Vec3f diff = pixelContribution - expectedContribution;
+
+    // TODO: compute image in blocks and accumulate statistics
+    blockStatistics += EARS::OutlierRejectedAverage::Sample{
+        diff * diff,
+        output.cost
+    };
+
+    imageStatistics += blockStatistics;
+    imageStatistics.splatDepthAcc(output.depthAcc, output.depthWeight, output.numSamples, 1);
     return output.totalContribution();
 }

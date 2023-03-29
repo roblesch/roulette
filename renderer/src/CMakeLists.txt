@@ -33,6 +33,7 @@ include_directories(
 )
 
 add_library(core
+        "aabb.h"
         "earstracer.cpp"
         "camera.h"
         "framebuffer.h"

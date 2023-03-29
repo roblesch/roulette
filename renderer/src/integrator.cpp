@@ -1,6 +1,7 @@
 #include "integrator.h"
 
 #include <iostream>
+#include <chrono>
 
 #include <OpenImageDenoise/oidn.h>
 
@@ -52,7 +53,7 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                 frame.add(px, tracer->trace(px, *sampler), FrameBuffer::COLOR);
             }
         }
-        std::cout << "Completed row " << j << std::endl;
+        std::cout << "Completed row " << j << "\r";
     }
 
     frame.normalize(FrameBuffer::ALBEDO);
@@ -71,7 +72,6 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     oidnSetSharedFilterImage(filter, "output", frame.oidn.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
     oidnSetFilter1b(filter, "hdr", true);
     oidnCommitFilter(filter);
-
     oidnExecuteFilter(filter);
 
     const char* errorMessage;
@@ -85,54 +85,165 @@ void OIDNIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     frame.toPng("oidn_img.png", FrameBuffer::OIDN);
 }
 
+static float computeElapsedSeconds(std::chrono::steady_clock::time_point start) {
+    auto current = std::chrono::steady_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+    return (float)ms.count() / 1000;
+}
+
 void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     Camera cam = scene.camera;
     int resx = cam.resx;
     int resy = cam.resy;
-    tracer = make_unique<EARSTracer>(scene);
+
+    // EARS configuration
+    EARSTracer etracer(scene);
+    etracer.rrs = EARS::RRSMethod::EARS();
+    etracer.rrs.technique = EARS::RRSMethod::EEARS;
+
+    // oidn setup
+    OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
+    oidnCommitDevice(device);
     auto albedoTracer = make_unique<AlbedoTracer>(scene);
     auto normalTracer = make_unique<NormalTracer>(scene);
-    frame.enableOidn();
+    Film albedo(resx, resy);
+    Film normal(resx, resy);
+    Film estimate(resx, resy);
+    Film denoised(resx, resy);
+    Film finalImg(resx, resy);
+    EARS::WeightedBitmapAccumulator finalImage;
+    etracer.imageStatistics.setOutlierRejectionCount(10);
 
+    std::cout << "Rendering denoising auxillaries" << std::endl;
+    // render denoising auxillaries 
     for (int j = 0; j < resy; j++) {
         for (int i = 0; i < resx; i++) {
             Vec2i px(i, j);
             sampler->startPath(i + j, 0xFFFF);
-            for (int i = 0; i < frame.spp; i++) {
-                frame.add(px, albedoTracer->trace(px, *sampler), FrameBuffer::ALBEDO);
-                frame.add(px, normalTracer->trace(px, *sampler), FrameBuffer::NORMAL);
-                frame.add(px, tracer->trace(px, *sampler), FrameBuffer::COLOR);
-            }
+            albedo.add(px, albedoTracer->trace(px, *sampler));
+            normal.add(px, normalTracer->trace(px, *sampler));
         }
-        std::cout << "Completed row " << j << std::endl;
     }
 
-    frame.normalize(FrameBuffer::ALBEDO);
-    frame.normalize(FrameBuffer::NORMAL);
-    frame.normalize(FrameBuffer::COLOR);
+    float budget = 300.0f;
+    float until = 0;
+    int spp = -1;
+    int iteration;
+    float iterationTime = 10;
+    etracer.cache.configuration.leafDecay = 1;
 
-    frame.toPng("albedo_img.png", FrameBuffer::ALBEDO);
-    frame.toPng("normal_img.png", FrameBuffer::NORMAL);
+    std::chrono::steady_clock::time_point renderStartTime = std::chrono::steady_clock::now();
 
-    OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
-    oidnCommitDevice(device);
-    OIDNFilter filter = oidnNewFilter(device, "RT");
-    oidnSetSharedFilterImage(filter, "color", frame.color.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
-    oidnSetSharedFilterImage(filter, "albedo", frame.albedo.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
-    oidnSetSharedFilterImage(filter, "normal", frame.normal.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
-    oidnSetSharedFilterImage(filter, "output", frame.oidn.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
-    oidnSetFilter1b(filter, "hdr", true);
-    oidnCommitFilter(filter);
+    for (iteration = 0; iteration <= 30; iteration++) {
+        const float timeBeforeIter = computeElapsedSeconds(renderStartTime);
+        if (timeBeforeIter >= budget) {
+            //break;
+        }
 
-    oidnExecuteFilter(filter);
+        estimate.clear();
 
-    const char* errorMessage;
-    if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
-        printf("Error: %s\n", errorMessage);
+        bool isPretraining = iteration < 3;
 
-    // Cleanup
-    oidnReleaseFilter(filter);
+        // don't use learning based methods unless caches have begun to converge
+        if (isPretraining) {
+            etracer.rrs = EARS::RRSMethod::Classic();
+        }
+        else {
+            etracer.rrs = EARS::RRSMethod::EARS();
+        }
+
+        // stretch this iteration since next would finish anyway
+        until += iterationTime;
+        if (until > budget - iterationTime) {
+            until = budget;
+        }
+
+        // render until time is out
+        float sampleTime;
+        float depthAcc = 0;
+        float depthWeight = 0;
+        float primarySplit = 0;
+        float samplesTaken = 0;
+
+        for (int j = 0; j < resy; j++) {
+            for (int i = 0; i < resx; i++) {
+                Vec2i px(i, j);
+                Vec3f r(0.0f);
+                if (isPretraining) {
+                    spp = 16;
+                    for (int ss = 0; ss < spp; ss++) {
+                        sampler->startPath(i + j, 0xFFFF);
+                        r += etracer.trace(px, *sampler);
+                    }
+                    estimate.add(px, r / spp);
+                } else {
+                    spp = 1;
+                    sampler->startPath(i + j, 0xFFFF);
+                    estimate.add(px, etracer.trace(px, *sampler));
+                }
+            }
+            std::cout << "Completed row " << j << "\r";
+        }
+
+        //do {
+            //spp++;
+            //for (int j = 0; j < resy; j++) {
+            //    for (int i = 0; i < resx; i++) {
+            //        Vec2i px(i, j);
+            //        sampler->startPath(i + j, 0xFFFF);
+            //        estimate.add(px, etracer.trace(px, *sampler));
+            //    }
+            //    std::cout << "Completed row " << j << "\r";
+            //}
+            //sampleTime = computeElapsedSeconds(renderStartTime) - timeBeforeIter;
+            //std::cout << std::endl << "sampleTime : " << sampleTime << " spp : " << spp << std::endl;
+        //} while (sampleTime < iterationTime && computeElapsedSeconds(renderStartTime) < budget);
+        etracer.imageStatistics.applyOutlierRejection();
+
+        // update caches
+        etracer.cache.build(true);
+
+        // update image statistics
+        etracer.updateImageStatistics((computeElapsedSeconds(renderStartTime) - timeBeforeIter)/10.0f);
+
+        const bool hasVarianceEstimate = iteration > 0;
+        const float avgVariance = etracer.imageStatistics.squareError().avg();
+        finalImage.add(&estimate, spp, hasVarianceEstimate ? etracer.imageStatistics.squareError().avg() : 0);
+
+        // denoise estimate
+        OIDNFilter filter = oidnNewFilter(device, "RT");
+        oidnSetSharedFilterImage(filter, "color", estimate.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+        oidnSetSharedFilterImage(filter, "albedo", albedo.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+        oidnSetSharedFilterImage(filter, "normal", normal.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+        oidnSetSharedFilterImage(filter, "output", etracer.imageEstimate.data(), OIDN_FORMAT_FLOAT3, resx, resy, 0, 0, 0);
+        oidnSetFilter1b(filter, "hdr", true);
+        oidnCommitFilter(filter);
+        oidnExecuteFilter(filter);
+
+        const char* errorMessage;
+        if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
+            printf("Error: %s\n", errorMessage);
+
+        char fname[32];
+        frame.color = etracer.imageEstimate.buffer;
+        snprintf(fname, sizeof(fname), "iteration_%d_denoise.png", iteration);
+        frame.toPng(fname);
+
+        frame.color = estimate.buffer;
+        snprintf(fname, sizeof(fname), "iteration_%d_estimate.png", iteration);
+        frame.toPng(fname);
+
+        if (iteration % 8 == 7)
+            iterationTime *= 2;
+
+        std::cout << "Iteration : " << iteration << " Avg variance : " << etracer.imageStatistics.squareError().avg() << " Image EARS Factor : " << etracer.imageEarsFactor << " Elapsed : " << timeBeforeIter << std::endl;
+    }
+
     oidnReleaseDevice(device);
 
-    frame.toPng("oidn_img.png", FrameBuffer::OIDN);
+    finalImage.develop(&finalImg);
+
+    frame.useOidn = true;
+    frame.color = finalImg.buffer;
+    frame.oidn = estimate.buffer;
 }

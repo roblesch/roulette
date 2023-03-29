@@ -3,6 +3,7 @@
 
 #include "usings.h"
 
+#include "aabb.h"
 #include "camera.h"
 #include "material.h"
 #include "primitive.h"
@@ -13,10 +14,12 @@ public:
     Scene() = default;
 
     Scene(Camera cam,
-          unordered_map<string, shared_ptr<Material>> mats,
-          unordered_map<string, shared_ptr<Primitive>> prims,
-          unordered_map<string, shared_ptr<Primitive>> lights) :
+          AABB aabb,
+          unordered_map<std::string, shared_ptr<Material>> mats,
+          unordered_map<std::string, shared_ptr<Primitive>> prims,
+          unordered_map<std::string, shared_ptr<Primitive>> lights) :
             camera(cam),
+            bounds(aabb),
             materials(std::move(mats)),
             primitives(std::move(prims)),
             lights(std::move(lights)) {};
@@ -38,9 +41,10 @@ public:
     }
 
     Camera camera{};
-    unordered_map<string, shared_ptr<Material>> materials;
-    unordered_map<string, shared_ptr<Primitive>> primitives;
-    unordered_map<string, shared_ptr<Primitive>> lights;
+    AABB bounds;
+    unordered_map<std::string, shared_ptr<Material>> materials;
+    unordered_map<std::string, shared_ptr<Primitive>> primitives;
+    unordered_map<std::string, shared_ptr<Primitive>> lights;
 };
 
 #endif

@@ -3,6 +3,66 @@
 
 #include "usings.h"
 
+inline std::vector<Vec3c> tonemap(std::vector<Vec3f> hdr) {
+    std::vector<Vec3c> ldr(hdr.size());
+    for (int i = 0; i < ldr.size(); i++) {
+        Vec3f a = v3fmax(hdr[i], Vec3f(0.0f));
+        Vec3f x = v3fmax(a - 0.004f, Vec3f(0.0f));
+        Vec3f tonemap = (x * (6.2f * x + 0.5f)) / (x * (6.2f * x + 1.7f) + 0.06f);
+        ldr[i] = Vec3c(255.0f * clamp(tonemap.x()), 255.0f * clamp(tonemap.y()), 255.0f * clamp(tonemap.z()));
+    }
+    return ldr;
+}
+
+class Film {
+public:
+    Film() = default;
+
+    Film(int resx, int resy) :
+        resx(resx),
+        resy(resy),
+        buffer(std::vector<Vec3f>(resx * resy))
+    {};
+
+    Film(Vec2i size) :
+        Film(size.x(), size.y())
+    {};
+
+    Vec3f get(int px) {
+        return buffer[px];
+    }
+
+    Vec3f get(Vec2i px) {
+        return get(px.y() * resx + px.x());
+    }
+
+    void add(int px, Vec3f v) {
+        buffer[px] = v;
+    }
+
+    void add(Vec2i px, Vec3f v) {
+        add(px.y() * resx + px.x(), v);
+    }
+
+    void clear() {
+        buffer = std::vector<Vec3f>(resx * resy);
+    }
+
+    Vec3f* data() {
+        return buffer.data();
+    }
+
+    Vec2i size() const {
+        return {
+            resx,
+            resy
+        };
+    }
+
+    int resx, resy;
+    std::vector<Vec3f> buffer;
+};
+
 class FrameBuffer {
 public:
     enum buffer {
@@ -17,23 +77,25 @@ public:
     FrameBuffer(int resx, int resy, int spp=1, bool useOidn=false) :
             resx(resx),
             resy(resy),
-            color(vector<Vec3f>(resx * resy)),
+            color(std::vector<Vec3f>(resx * resy)),
             spp(spp),
             useOidn(useOidn) {
         if (useOidn) {
-            albedo = vector<Vec3f>(resx * resy);
-            normal = vector<Vec3f>(resx * resy);
-            oidn = vector<Vec3f>(resx * resy);
+            albedo = std::vector<Vec3f>(resx * resy);
+            normal = std::vector<Vec3f>(resx * resy);
+            oidn = std::vector<Vec3f>(resx * resy);
         }
     };
+
+    void incSpp() { spp += 1; }
 
     void setSpp(int spp_) { spp = spp_; }
 
     void enableOidn() {
         useOidn = true;
-        albedo = vector<Vec3f>(resx * resy);
-        normal = vector<Vec3f>(resx * resy);
-        oidn = vector<Vec3f>(resx * resy);
+        albedo = std::vector<Vec3f>(resx * resy);
+        normal = std::vector<Vec3f>(resx * resy);
+        oidn = std::vector<Vec3f>(resx * resy);
     }
 
     void add(int px, Vec3f v, buffer b=COLOR) {
@@ -46,6 +108,9 @@ public:
             break;
         case NORMAL:
             normal[px] += v;
+            break;
+        case OIDN:
+            oidn[px] += v;
             break;
         }
     }
@@ -62,6 +127,9 @@ public:
             break;
         case NORMAL:
             normal[px] = v;
+            break;
+        case OIDN:
+            oidn[px] = v;
             break;
         }
     }
@@ -106,10 +174,10 @@ public:
     int resx{};
     int resy{};
     int spp;
-    vector<Vec3f> color;
-    vector<Vec3f> albedo;
-    vector<Vec3f> normal;
-    vector<Vec3f> oidn;
+    std::vector<Vec3f> color;
+    std::vector<Vec3f> albedo;
+    std::vector<Vec3f> normal;
+    std::vector<Vec3f> oidn;
 };
 
 #endif

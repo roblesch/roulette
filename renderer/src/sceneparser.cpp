@@ -2,7 +2,7 @@
 
 Vec3f as_vec3(const xml_node &node) {
     std::istringstream stream(node.attribute("value").value());
-    string token;
+    std::string token;
     float buf[3];
     for (float &i: buf) {
         stream >> token;
@@ -12,12 +12,12 @@ Vec3f as_vec3(const xml_node &node) {
 }
 
 Vec3f as_vec3(const value_type &value) {
-    return Vec3f(value.get<vector<float>>().data());
+    return Vec3f(value.get<std::vector<float>>().data());
 }
 
 Mat4f as_mat4(const xml_node &node) {
     std::istringstream stream(node.attribute("value").value());
-    string token;
+    std::string token;
     float buf[16];
     for (float &i: buf) {
         stream >> token;
@@ -31,8 +31,8 @@ Mat4f as_mat4(const xml_node &node) {
     };
 }
 
-bool is_shape(const xml_node &shape_node, const string &type) {
-    return ((string) shape_node.attribute("type").value()) == type;
+bool is_shape(const xml_node &shape_node, const std::string &type) {
+    return ((std::string) shape_node.attribute("type").value()) == type;
 }
 
 void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<Integrator> &integrator,
@@ -44,9 +44,9 @@ void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<In
     }
 
     Camera camera{};
-    unordered_map<string, shared_ptr<Material>> materials;
-    unordered_map<string, shared_ptr<Primitive>> primitives;
-    unordered_map<string, shared_ptr<Primitive>> lights;
+    unordered_map<std::string, shared_ptr<Material>> materials;
+    unordered_map<std::string, shared_ptr<Primitive>> primitives;
+    unordered_map<std::string, shared_ptr<Primitive>> lights;
 
     xml_node data = doc.child("scene");
     xml_node sensor = data.child("sensor");
@@ -65,7 +65,7 @@ void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<In
     }
 
     for (xml_node _bsdf: bsdfs) {
-        string matId = _bsdf.attribute("id").value();
+        std::string matId = _bsdf.attribute("id").value();
         Vec3f rgb = as_vec3(_bsdf.child("bsdf").child("rgb"));
         materials[matId] = make_shared<Lambertian>(rgb);
     }
@@ -74,8 +74,8 @@ void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<In
         shared_ptr<Shape> shape;
         shared_ptr<Emitter> emitter;
 
-        string shapeId = _shape.attribute("id").value();
-        string matId = _shape.child("ref").attribute("id").value();
+        std::string shapeId = _shape.attribute("id").value();
+        std::string matId = _shape.child("ref").attribute("id").value();
         Mat4f transform = as_mat4(_shape.child("transform").child("matrix"));
 
         if (is_shape(_shape, "rectangle")) {
@@ -97,7 +97,7 @@ void SceneParser::FromMitsubaXML(Scene &scene, FrameBuffer &frame, unique_ptr<In
         }
     }
 
-    scene = Scene(camera, materials, primitives, lights);
+    scene = Scene(camera, {}, materials, primitives, lights);
     frame = FrameBuffer(camera.resx, camera.resy);
     integrator = make_unique<PathTraceIntegrator>();
 }
@@ -111,12 +111,13 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
     }
 
     Camera camera{};
-    unordered_map<string, shared_ptr<Material>> materials;
-    unordered_map<string, shared_ptr<Primitive>> primitives;
-    unordered_map<string, shared_ptr<Primitive>> lights;
+    AABB aabb{};
+    unordered_map<std::string, shared_ptr<Material>> materials;
+    unordered_map<std::string, shared_ptr<Primitive>> primitives;
+    unordered_map<std::string, shared_ptr<Primitive>> lights;
 
     for (value_type _bsdf: data["bsdfs"]) {
-        string name = _bsdf["name"];
+        std::string name = _bsdf["name"];
         if (_bsdf["type"] == "lambert") {
             Vec3f albedo = as_vec3(_bsdf["albedo"]);
             materials[name] = make_shared<Lambertian>(albedo);
@@ -130,7 +131,7 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
         shared_ptr<Shape> shape;
         shared_ptr<Emitter> emit;
 
-        string name = _prim["bsdf"];
+        std::string name = _prim["bsdf"];
         value_type tsf = _prim["transform"];
 
         Vec3f pos = tsf.contains("position") ?
@@ -148,6 +149,8 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
         } else if (_prim["type"] == "cube") {
             shape = make_shared<Cube>(pos, scale, rot);
         }
+
+        shape->setbb(aabb);
 
         primitives[name] = make_shared<Primitive>(
                 shape,
@@ -179,6 +182,6 @@ void SceneParser::FromTungstenJSON(Scene &scene, FrameBuffer &frame, unique_ptr<
         }
     }
 
-    scene = Scene(camera, materials, primitives, lights);
+    scene = Scene(camera, aabb, materials, primitives, lights);
     frame = FrameBuffer(camera.resx, camera.resy);
 }

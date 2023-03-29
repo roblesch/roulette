@@ -80,9 +80,15 @@ public:
 
 class EARSTracer : public PathTracer {
 public:
-    EARSTracer(const Scene& scene) : PathTracer(scene) {};
+    EARSTracer(const Scene& scene) : PathTracer(scene) {
+        blockStatistics.resize(10);
+        imageEstimate = Film(scene.camera.resolution());
+        for (int i = 0; i < imageEstimate.resx * imageEstimate.resy; i++) {
+            imageEstimate.add(i, Vec3f(0.5f));
+        }
+    };
     Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
-private:
+
     Vec2f dirToCanonical(const Vec3f& d) {
         if (!std::isfinite(d.x()) || !std::isfinite(d.y()) || !std::isfinite(d.z())) {
             return { 0, 0 };
@@ -105,8 +111,12 @@ private:
         return result;
     }
 
-    Vec3f mapPointToUnitCube(const Vec3f& vec) {
-        return {};
+    Vec3f mapPointToUnitCube(const Vec3f& point) {
+        AABB aabb = scene->bounds;
+        Vec3f size = aabb.getExtents();
+        Vec3f result = point - aabb.min;
+        result /= size;
+        return result;
     }
 
     struct LiInput {
@@ -142,9 +152,20 @@ private:
             return reflected + emitted;
         }
     };
+
+    void updateImageStatistics(float actualTotalCost) {
+        imageStatistics.reset(actualTotalCost);
+        imageEarsFactor = imageStatistics.earsFactor();
+    }
+
     LiOutput Li(LiInput &input, PathSampleGenerator& sampler);
 
     EARS::Octtree cache;
+    EARS::ImageStatistics imageStatistics;
+    EARS::OutlierRejectedAverage blockStatistics;
+    EARS::RRSMethod rrs;
+    Film imageEstimate;
+    float imageEarsFactor;
 };
 
 #endif
