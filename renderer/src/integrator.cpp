@@ -108,6 +108,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     auto normalTracer = make_unique<NormalTracer>(scene);
     Film albedo(resx, resy);
     Film normal(resx, resy);
+    Film rawEstimate(resx, resy);
     Film estimate(resx, resy);
     Film denoised(resx, resy);
     Film finalImg(resx, resy);
@@ -127,6 +128,8 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
     float budget = 300.0f;
     float until = 0;
+    int baseSpp = 2;
+    int trainingSpp = 32;
     int spp = -1;
     int iteration;
     float iterationTime = 10;
@@ -170,20 +173,24 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                 Vec2i px(i, j);
                 Vec3f r(0.0f);
                 if (isPretraining) {
-                    spp = 16;
+                    spp = trainingSpp;
                     for (int ss = 0; ss < spp; ss++) {
                         sampler->startPath(i + j, 0xFFFF);
                         r += etracer.trace(px, *sampler);
                     }
                     estimate.add(px, r / spp);
+                    rawEstimate.add(px, r);
                 } else {
-                    spp = 1;
+                    spp = baseSpp;
                     sampler->startPath(i + j, 0xFFFF);
-                    estimate.add(px, etracer.trace(px, *sampler));
+                    r = etracer.trace(px, *sampler);
+                    estimate.add(px, r);
+                    rawEstimate.add(px, r);
                 }
             }
-            std::cout << "Completed row " << j << "\r";
+            std::cout << (isPretraining ? "(Pretraining)" : "(Rendering)") << " Completed row " << j << " with " << spp << "spp\r";
         }
+        std::cout << std::endl;
 
         //do {
             //spp++;
@@ -208,7 +215,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
         const bool hasVarianceEstimate = iteration > 0;
         const float avgVariance = etracer.imageStatistics.squareError().avg();
-        finalImage.add(&estimate, spp, hasVarianceEstimate ? etracer.imageStatistics.squareError().avg() : 0);
+        finalImage.add(&rawEstimate, spp, hasVarianceEstimate ? etracer.imageStatistics.squareError().avg() : 0);
 
         // denoise estimate
         OIDNFilter filter = oidnNewFilter(device, "RT");
@@ -233,15 +240,19 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         snprintf(fname, sizeof(fname), "iteration_%d_estimate.png", iteration);
         frame.toPng(fname);
 
-        if (iteration % 8 == 7)
-            iterationTime *= 2;
+        finalImage.develop(&finalImg);
+        frame.color = finalImg.buffer;
+        snprintf(fname, sizeof(fname), "iteration_%d_merged.png", iteration);
+        frame.toPng(fname);
 
-        std::cout << "Iteration : " << iteration << " Avg variance : " << etracer.imageStatistics.squareError().avg() << " Image EARS Factor : " << etracer.imageEarsFactor << " Elapsed : " << timeBeforeIter << std::endl;
+        if (iteration >= baseSpp) {
+            baseSpp *= 2;
+        }
+
+        std::cout << "Iteration : " << iteration << " Spp : " << spp << " Avg variance : " << etracer.imageStatistics.squareError().avg() << " Image EARS Factor : " << etracer.imageEarsFactor << " Elapsed : " << timeBeforeIter << std::endl;
     }
 
     oidnReleaseDevice(device);
-
-    finalImage.develop(&finalImg);
 
     frame.useOidn = true;
     frame.color = finalImg.buffer;
