@@ -98,8 +98,8 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
     // EARS configuration
     EARSTracer etracer(scene);
-    etracer.rrs = EARS::RRSMethod::EARS();
-    etracer.rrs.technique = EARS::RRSMethod::EEARS;
+    //etracer.rrs = EARS::RRSMethod::EARS();
+    //etracer.rrs.technique = EARS::RRSMethod::EEARS;
 
     // oidn setup
     OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
@@ -129,21 +129,24 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     float budget = 300.0f;
     float until = 0;
     int baseSpp = 2;
-    int trainingSpp = 32;
-    int spp = -1;
+    int trainingSpp = 16;
+    int spp = 0;
     int iteration;
     float iterationTime = 10;
+
     etracer.cache.configuration.leafDecay = 1;
+    etracer.cache.setMaximumMemory(long(24) * 1024 * 1024);
 
     std::chrono::steady_clock::time_point renderStartTime = std::chrono::steady_clock::now();
 
-    for (iteration = 0; iteration <= 30; iteration++) {
+    for (iteration = 0; iteration <= 5; iteration++) {
         const float timeBeforeIter = computeElapsedSeconds(renderStartTime);
-        if (timeBeforeIter >= budget) {
-            //break;
-        }
+        //if (timeBeforeIter >= budget) {
+        //    //break;
+        //}
 
         estimate.clear();
+        rawEstimate.clear();
 
         bool isPretraining = iteration < 3;
 
@@ -156,10 +159,10 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         }
 
         // stretch this iteration since next would finish anyway
-        until += iterationTime;
-        if (until > budget - iterationTime) {
-            until = budget;
-        }
+        //until += iterationTime;
+        //if (until > budget - iterationTime) {
+        //    until = budget;
+        //}
 
         // render until time is out
         float sampleTime;
@@ -182,9 +185,11 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                     rawEstimate.add(px, r);
                 } else {
                     spp = baseSpp;
-                    sampler->startPath(i + j, 0xFFFF);
-                    r = etracer.trace(px, *sampler);
-                    estimate.add(px, r);
+                    for (int ss = 0; ss < spp; ss++) {
+                        sampler->startPath(i + j, 0xFFFF);
+                        r += etracer.trace(px, *sampler);
+                    }
+                    estimate.add(px, r / spp);
                     rawEstimate.add(px, r);
                 }
             }
@@ -192,26 +197,13 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         }
         std::cout << std::endl;
 
-        //do {
-            //spp++;
-            //for (int j = 0; j < resy; j++) {
-            //    for (int i = 0; i < resx; i++) {
-            //        Vec2i px(i, j);
-            //        sampler->startPath(i + j, 0xFFFF);
-            //        estimate.add(px, etracer.trace(px, *sampler));
-            //    }
-            //    std::cout << "Completed row " << j << "\r";
-            //}
-            //sampleTime = computeElapsedSeconds(renderStartTime) - timeBeforeIter;
-            //std::cout << std::endl << "sampleTime : " << sampleTime << " spp : " << spp << std::endl;
-        //} while (sampleTime < iterationTime && computeElapsedSeconds(renderStartTime) < budget);
         etracer.imageStatistics.applyOutlierRejection();
 
         // update caches
         etracer.cache.build(true);
 
         // update image statistics
-        etracer.updateImageStatistics((computeElapsedSeconds(renderStartTime) - timeBeforeIter)/10.0f);
+        etracer.updateImageStatistics((computeElapsedSeconds(renderStartTime) - timeBeforeIter));
 
         const bool hasVarianceEstimate = iteration > 0;
         const float avgVariance = etracer.imageStatistics.squareError().avg();
@@ -245,11 +237,8 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         snprintf(fname, sizeof(fname), "iteration_%d_merged.png", iteration);
         frame.toPng(fname);
 
-        if (iteration >= baseSpp) {
-            baseSpp *= 2;
-        }
-
         std::cout << "Iteration : " << iteration << " Spp : " << spp << " Avg variance : " << etracer.imageStatistics.squareError().avg() << " Image EARS Factor : " << etracer.imageEarsFactor << " Elapsed : " << timeBeforeIter << std::endl;
+        baseSpp *= 2;
     }
 
     oidnReleaseDevice(device);

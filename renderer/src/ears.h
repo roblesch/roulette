@@ -22,9 +22,9 @@
 namespace EARS {
 
 /// the cost of ray tracing + direct illumination sample (in seconds)
-static constexpr float COST_NEE = 0.3e-7;
+static constexpr float COST_NEE = 7e-6;
 /// the cost of ray tracing + BSDF/camera sample (in seconds)
-static constexpr float COST_BSDF = 0.3e-7;
+static constexpr float COST_BSDF = 7e-6;
 
 class Octtree {
 public:
@@ -34,7 +34,7 @@ public:
     struct Configuration {
         float minimumLeafWeightForSampling = 40000;
         float minimumLeafWeightForTraining = 20000;
-        float leafDecay = 0.5; /// set to 0 for hard reset after an iteration, 1 for no reset at all
+        float leafDecay = 1; /// set to 0 for hard reset after an iteration, 1 for no reset at all
         long maxNodeCount = 0;
     };
 
@@ -275,6 +275,8 @@ struct RRSMethod {
 
     int rrDepth;
     bool useAbsoluteThroughput;
+
+    std::string name;
 
     RRSMethod() {
         technique = ENone;

@@ -1,4 +1,5 @@
 #include "tracer.h"
+#include <chrono>
 
 /**
  * EARS.h
@@ -8,6 +9,12 @@
  * https://github.com/iRath96/ears/blob/master/mitsuba/src/integrators/path/recursive_path.cpp
  * https://github.com/iRath96/ears/blob/master/LICENSE
  */
+
+static float computeElapsedSeconds(std::chrono::steady_clock::time_point start) {
+    auto current = std::chrono::steady_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+    return (float)ms.count() / 1000;
+}
 
 EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenerator& sampler) {
     EARSTracer::LiOutput output;
@@ -68,7 +75,6 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
         /* ==================================================================== */
         /*                     Direct illumination sampling                     */
         /* ==================================================================== */
-
         LrCost += EARS::COST_NEE;
         LightSample lightsample;
         auto light = scene->primitives.at("Light");
@@ -167,12 +173,14 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
         lrSumCosts += LrCost;
     }
 
-    trainingNode->splatLrEstimate(
-        lrSum,
-        lrSumSquares,
-        lrSumCosts,
-        numSamples
-    );
+    if (numSamples > 0) {
+        trainingNode->splatLrEstimate(
+            lrSum,
+            lrSumSquares,
+            lrSumCosts,
+            numSamples
+        );
+    }
 
     if (output.depthAcc == 0) {
         output.markAsLeaf(input.depth);
