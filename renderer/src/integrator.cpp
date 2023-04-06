@@ -152,10 +152,10 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
         // don't use learning based methods unless caches have begun to converge
         if (isPretraining) {
-            etracer.rrs = EARS::RRSMethod::Classic();
+            etracer.rrs = EARS::RRSMethod();
         }
         else {
-            etracer.rrs = EARS::RRSMethod::EARS();
+            etracer.rrs = EARS::RRSMethod::ADRRS();
         }
 
         // stretch this iteration since next would finish anyway
