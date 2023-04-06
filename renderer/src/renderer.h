@@ -24,7 +24,6 @@ public:
         integrator = make_unique<EARSIntegrator>();
         frame.setSpp(1);
         integrator->render(scene, frame);
-        frame.toPng("traced_img.png");
     }
 
     Scene scene;

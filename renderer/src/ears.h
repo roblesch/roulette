@@ -18,6 +18,7 @@
 
 #include <array>
 #include <vector>
+#include <iostream>
 
 namespace EARS {
 
@@ -478,6 +479,13 @@ public:
         }
     };
 
+    OutlierRejectedAverage() {
+        m_weight = 0;
+        m_index = 0;
+        m_length = 0;
+        m_outlierWeight = 0;
+    }
+
     /**
      * Resizes the history buffer to account for up to \c length outliers.
      */
@@ -598,9 +606,9 @@ public:
     }
 
     Sample average() const {
-//        if (m_index > 0) {
-//            SLog(EWarn, "There are some outliers that have not yet been removed. Did you forget to call computeOutlierContribution()?");
-//        }
+        if (m_index > 0) {
+            std::cout << "Warning - outliers possibly not removed" << std::endl;
+        }
 
         return (m_accumulation - m_outlierAccumulation) / (m_weight - m_outlierWeight);
     }
@@ -609,12 +617,12 @@ public:
         return m_accumulation / m_weight;
     }
 
-    long weight() const {
+    long long weight() const {
         return m_weight;
     }
 
 private:
-    long m_weight;
+    long long m_weight;
     int m_index;
     int m_length;
     Sample m_accumulation;
@@ -626,6 +634,11 @@ private:
 };
 
 struct ImageStatistics {
+    void init() {
+        m_lastStats.cost = 0.0f;
+        m_lastStats.squareError = Vec3f(0.0f);
+    }
+
     void setOutlierRejectionCount(int count) {
         m_average.resize(count);
     }
@@ -716,8 +729,8 @@ private:
     float m_primarySamples{0.f};
 
     struct {
-        Vec3f squareError;
-        float cost;
+        Vec3f squareError = Vec3f(0.0f);
+        float cost = 0.0f;
     } m_lastStats;
 };
 
