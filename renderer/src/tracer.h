@@ -3,10 +3,14 @@
 
 #include "usings.h"
 
-#include "ears.h"
 #include "ray.h"
 #include "sampler.h"
 #include "scene.h"
+#include "octtree.h"
+#include "imagestatistics.h"
+#include "outlierrejectedaverage.h"
+#include "framebuffer.h"
+#include "rrsmethod.h"
 
 class Tracer {
 public:
@@ -79,6 +83,47 @@ public:
 };
 
 class EARSTracer : public PathTracer {
+private:
+    /// the cost of ray tracing + direct illumination sample (in seconds)
+    static constexpr float COST_NEE  = 0.3e-7;
+
+    /// the cost of ray tracing + BSDF/camera sample (in seconds)
+    static constexpr float COST_BSDF = 0.3e-7;
+
+    struct LiInput {
+        Vec3f weight;
+        Ray ray;
+        int depth;
+        bool wasSpecular { true };
+    };
+
+    struct LiOutput {
+        Vec3f reflected { 0.f };
+        Vec3f emitted { 0.f };
+        float cost { 0.f };
+
+        int numSamples { 0 };
+        float depthAcc { 0.f };
+        float depthWeight { 0.f };
+
+        void markAsLeaf(int depth) {
+            depthAcc = depth;
+            depthWeight = 1;
+        }
+
+        float averagePathLength() const {
+            return depthWeight > 0 ? depthAcc / depthWeight : 0;
+        }
+
+        float numberOfPaths() const {
+            return depthWeight;
+        }
+
+        Vec3f totalContribution() const {
+            return reflected + emitted;
+        }
+    };
+
 public:
     EARSTracer(const Scene& scene) : PathTracer(scene) {
         imageEstimate = Film(scene.camera.resolution());
@@ -87,6 +132,7 @@ public:
             imageEstimate.add(i, Vec3f(0.5f));
         }
     };
+
     Vec3f trace(const Vec2i& px, PathSampleGenerator& sampler) override;
 
     Vec2f dirToCanonical(const Vec3f& d) {
@@ -119,40 +165,6 @@ public:
         return result;
     }
 
-    struct LiInput {
-        Vec3f weight;
-        Ray ray;
-        int depth;
-        bool wasSpecular;
-    };
-
-    struct LiOutput {
-        Vec3f reflected{ 0.f };
-        Vec3f emitted{ 0.f };
-        float cost{ 0.f };
-
-        int numSamples{ 0 };
-        float depthAcc{ 0.f };
-        float depthWeight{ 0.f };
-
-        void markAsLeaf(int depth) {
-            depthAcc = depth;
-            depthWeight = 1;
-        }
-
-        float averagePathLength() const {
-            return depthWeight > 0 ? depthAcc / depthWeight : 0;
-        }
-
-        float numberOfPaths() const {
-            return depthWeight;
-        }
-
-        Vec3f totalContribution() const {
-            return reflected + emitted;
-        }
-    };
-
     void updateImageStatistics(float actualTotalCost) {
         imageStatistics.reset(actualTotalCost);
         imageEarsFactor = imageStatistics.earsFactor();
@@ -166,6 +178,7 @@ public:
     }
 
     LiOutput Li(LiInput &input, PathSampleGenerator& sampler);
+    Vec3f LrEstimate(const Vec2i& px, PathSampleGenerator& sampler);
 
     EARS::Octtree cache;
     EARS::ImageStatistics imageStatistics;
@@ -176,7 +189,7 @@ public:
     float depthAcc;
     float depthWeight;
     float primarySplit;
-    int samplesTaken;
+    float samplesTaken;
 };
 
 #endif

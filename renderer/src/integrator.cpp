@@ -3,6 +3,8 @@
 #include <iostream>
 #include <chrono>
 
+#include "weightedbitmapaccumulator.h"
+
 #include <OpenImageDenoise/oidn.h>
 
 void RayCastIntegrator::render(const Scene &scene, FrameBuffer &frame) {
@@ -98,8 +100,6 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
     // EARS configuration
     EARSTracer etracer(scene);
-    //etracer.rrs = EARS::RRSMethod::EARS();
-    //etracer.rrs.technique = EARS::RRSMethod::EEARS;
 
     // oidn setup
     OIDNDevice device = oidnNewDevice(OIDN_DEVICE_TYPE_DEFAULT);
@@ -108,14 +108,6 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
     auto normalTracer = make_unique<NormalTracer>(scene);
     Film albedo(resx, resy);
     Film normal(resx, resy);
-    Film rawEstimate(resx, resy);
-    Film estimate(resx, resy);
-    Film denoised(resx, resy);
-    Film finalImg(resx, resy);
-    EARS::WeightedBitmapAccumulator finalImage;
-    finalImage.clear();
-    etracer.imageStatistics.setOutlierRejectionCount(10);
-    etracer.imageStatistics.init();
 
     std::cout << "Rendering denoising auxillaries" << std::endl;
     // render denoising auxillaries 
@@ -128,13 +120,17 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         }
     }
 
-    float budget = 300.0f;
-    float until = 0;
-    int baseSpp = 1;
-    int trainingSpp = 1;
-    int spp = 1;
+    Film rawEstimate(resx, resy);
+    Film estimate(resx, resy);
+    Film denoised(resx, resy);
+    Film finalImg(resx, resy);
+    Film lrEstImg(resx, resy);
+    EARS::WeightedBitmapAccumulator finalImage{};
+    finalImage.clear();
+    etracer.imageStatistics.setOutlierRejectionCount(10);
+
+    int spp = 4;
     int iteration;
-    float iterationTime = 10;
 
     etracer.cache.configuration.leafDecay = 1;
     etracer.cache.setMaximumMemory(long(24) * 1024 * 1024);
@@ -143,9 +139,6 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
     for (iteration = 0; iteration <= 16; iteration++) {
         const float timeBeforeIter = computeElapsedSeconds(renderStartTime);
-        //if (timeBeforeIter >= budget) {
-        //    //break;
-        //}
 
         estimate.clear();
         rawEstimate.clear();
@@ -160,62 +153,63 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
             etracer.rrs = EARS::RRSMethod::ADRRS();
         }
 
-        // stretch this iteration since next would finish anyway
-        //until += iterationTime;
-        //if (until > budget - iterationTime) {
-        //    until = budget;
-        //}
-
-        // render until time is out
-        float sampleTime;
-        float depthAcc = 0;
-        float depthWeight = 0;
-        float primarySplit = 0;
-        float samplesTaken = 0;
-
-        // block rendering
-        for (int blockY = 0; blockY < resy; blockY += 32) {
-            for (int blockX = 0; blockX < resx; blockX += 32) {
-                EARS::OutlierRejectedAverage blockStatistics;
-                blockStatistics.resize(10);
-                etracer.blockStatistics = blockStatistics;
-                etracer.resetBlockAccumulators();
-                if (etracer.imageStatistics.hasOutlierLowerBound()) {
-                    blockStatistics.setRemoteOutlierLowerBound(etracer.imageStatistics.outlierLowerBound());
-                }
-                std::cout << (isPretraining ? "(Pretraining)" : "(Rendering)") << " blockX : " << blockX << " blockY : " << blockY << " with " << spp << "spp\r";
-                for (int y = blockY; y < blockY + 32; y++) {
-                    for (int x = blockX; x < blockX + 32; x++) {
-                        Vec2i px(x, y);
-                        sampler->startPath(x + y, 0xFFFF);
-                        Vec3f li = etracer.trace(px, *sampler);
-                        estimate.add(px, li);
-                        rawEstimate.add(px, li);
+        for (int pass = 1; pass <= spp; pass++) {
+            // block rendering
+            for (int blockY = 0; blockY < resy; blockY += 32) {
+                for (int blockX = 0; blockX < resx; blockX += 32) {
+                    EARS::OutlierRejectedAverage blockStatistics;
+                    blockStatistics.resize(10);
+                    if (etracer.imageStatistics.hasOutlierLowerBound()) {
+                        blockStatistics.setRemoteOutlierLowerBound(etracer.imageStatistics.outlierLowerBound());
                     }
+                    etracer.blockStatistics = blockStatistics;
+                    etracer.resetBlockAccumulators();
+                    std::cout << (isPretraining ? "(Pretraining)" : "(Rendering)") <<
+                        " blockX : " << blockX << " blockY : " << blockY <<
+                        " with " << pass <<"/" << spp << "spp\r";
+                    for (int y = blockY; y < blockY + 32; y++) {
+                        for (int x = blockX; x < blockX + 32; x++) {
+                            Vec2i px(x, y);
+                            sampler->startPath(x + y, 0xFFFF);
+                            Vec3f li = etracer.trace(px, *sampler);
+                            estimate.add(px, li/spp);
+                            rawEstimate.add(px, li/spp);
+                        }
+                    }
+                    etracer.imageStatistics += etracer.blockStatistics;
+                    etracer.imageStatistics.splatDepthAcc(etracer.depthAcc, etracer.depthWeight, etracer.primarySplit, etracer.samplesTaken);
                 }
-                etracer.imageStatistics += etracer.blockStatistics;
-                etracer.imageStatistics.splatDepthAcc(etracer.depthAcc, etracer.depthWeight, etracer.primarySplit, etracer.samplesTaken);
             }
         }
         std::cout << std::endl;
 
+        // draw lr cache
+        for (int y = 0; y < resy; y++) {
+            for (int x = 0; x < resy; x++) {
+                Vec2i px(x, y);
+                sampler->startPath(x + y, 0xFFFF);
+                Vec3f lr = etracer.LrEstimate(px, *sampler);
+                lrEstImg.add(px, lr);
+            }
+        }
+
         etracer.imageStatistics.m_iterSpp = spp;
         etracer.imageStatistics.m_totalSpp += spp;
-        etracer.imageStatistics.applyOutlierRejection();
 
+        // reject outliers
+        etracer.imageStatistics.applyOutlierRejection();
         // update caches
         etracer.cache.build(true);
         // update image statistics
         etracer.updateImageStatistics((computeElapsedSeconds(renderStartTime) - timeBeforeIter));
 
-//        const bool hasVarianceEstimate = iteration > 0;
-//        const float avgVariance = etracer.imageStatistics.squareError().avg();
-//        finalImage.add(
-//            &rawEstimate, spp,
-//            isPretraining ? (
-//                hasVarianceEstimate ? etracer.imageStatistics.squareError().avg() : 0)
-//            : 1);
-        finalImage.add(&rawEstimate, spp);
+        // finalImage.add(rawEstimate, spp);
+        finalImage.add(
+            rawEstimate, spp,
+            etracer.rrs.performsInvVarWeighting() ?
+            (iteration > 0 ? etracer.imageStatistics.squareError().avg() : 0) :
+            1
+        );
 
         if (finalImage.hasData())
             finalImage.develop(&etracer.imageEstimate);
@@ -234,6 +228,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         if (oidnGetDeviceError(device, &errorMessage) != OIDN_ERROR_NONE)
             printf("Error: %s\n", errorMessage);
 
+        // debug images
         char fname[32];
         frame.color = etracer.imageEstimate.buffer;
         snprintf(fname, sizeof(fname), "iteration_%d_denoise.png", iteration);
@@ -248,8 +243,11 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         snprintf(fname, sizeof(fname), "iteration_%d_merged.png", iteration);
         frame.toPng(fname);
 
+        frame.color = lrEstImg.buffer;
+        snprintf(fname, sizeof(fname), "iteration_%d_lr.png", iteration);
+        frame.toPng(fname);
+
         std::cout << "Iteration : " << iteration << " Spp : " << spp << " Avg variance : " << etracer.imageStatistics.squareError().avg() << " Image EARS Factor : " << etracer.imageEarsFactor << " Elapsed : " << timeBeforeIter << std::endl;
-        //baseSpp *= 2;
     }
 
     oidnReleaseDevice(device);
