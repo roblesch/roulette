@@ -141,7 +141,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
 
     std::chrono::steady_clock::time_point renderStartTime = std::chrono::steady_clock::now();
 
-    for (iteration = 0; iteration <= 256; iteration++) {
+    for (iteration = 0; iteration <= 16; iteration++) {
         const float timeBeforeIter = computeElapsedSeconds(renderStartTime);
         //if (timeBeforeIter >= budget) {
         //    //break;
@@ -150,7 +150,7 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         estimate.clear();
         rawEstimate.clear();
 
-        bool isPretraining = iteration < 64;
+        bool isPretraining = iteration < 3;
 
         // don't use learning based methods unless caches have begun to converge
         if (isPretraining) {
@@ -176,6 +176,13 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
         // block rendering
         for (int blockY = 0; blockY < resy; blockY += 32) {
             for (int blockX = 0; blockX < resx; blockX += 32) {
+                EARS::OutlierRejectedAverage blockStatistics;
+                blockStatistics.resize(10);
+                etracer.blockStatistics = blockStatistics;
+                etracer.resetBlockAccumulators();
+                if (etracer.imageStatistics.hasOutlierLowerBound()) {
+                    blockStatistics.setRemoteOutlierLowerBound(etracer.imageStatistics.outlierLowerBound());
+                }
                 std::cout << (isPretraining ? "(Pretraining)" : "(Rendering)") << " blockX : " << blockX << " blockY : " << blockY << " with " << spp << "spp\r";
                 for (int y = blockY; y < blockY + 32; y++) {
                     for (int x = blockX; x < blockX + 32; x++) {
@@ -186,52 +193,29 @@ void EARSIntegrator::render(const Scene& scene, FrameBuffer& frame) {
                         rawEstimate.add(px, li);
                     }
                 }
-                etracer.imageStatistics.applyOutlierRejection();
+                etracer.imageStatistics += etracer.blockStatistics;
+                etracer.imageStatistics.splatDepthAcc(etracer.depthAcc, etracer.depthWeight, etracer.primarySplit, etracer.samplesTaken);
             }
         }
         std::cout << std::endl;
 
-        //for (int j = 0; j < resy; j++) {
-        //    for (int i = 0; i < resx; i++) {
-        //        Vec2i px(i, j);
-        //        Vec3f r(0.0f);
-        //        if (isPretraining) {
-        //            spp = trainingSpp;
-        //            for (int ss = 0; ss < spp; ss++) {
-        //                sampler->startPath(i + j, 0xFFFF);
-        //                r += etracer.trace(px, *sampler);
-        //            }
-        //            estimate.add(px, r / spp);
-        //            rawEstimate.add(px, r);
-        //        } else {
-        //            spp = baseSpp;
-        //            for (int ss = 0; ss < spp; ss++) {
-        //                sampler->startPath(i + j, 0xFFFF);
-        //                r += etracer.trace(px, *sampler);
-        //            }
-        //            estimate.add(px, r / spp);
-        //            rawEstimate.add(px, r);
-        //        }
-        //    }
-        //    std::cout << (isPretraining ? "(Pretraining)" : "(Rendering)") << " Completed row " << j << " with " << spp << "spp\r";
-        //}
-        //std::cout << std::endl;
-
-        //etracer.imageStatistics.applyOutlierRejection();
+        etracer.imageStatistics.m_iterSpp = spp;
+        etracer.imageStatistics.m_totalSpp += spp;
+        etracer.imageStatistics.applyOutlierRejection();
 
         // update caches
         etracer.cache.build(true);
-
         // update image statistics
         etracer.updateImageStatistics((computeElapsedSeconds(renderStartTime) - timeBeforeIter));
 
-        const bool hasVarianceEstimate = iteration > 0;
-        const float avgVariance = etracer.imageStatistics.squareError().avg();
-        finalImage.add(
-            &rawEstimate, spp, 
-            isPretraining ? (
-                hasVarianceEstimate ? etracer.imageStatistics.squareError().avg() : 0)
-            : 1);
+//        const bool hasVarianceEstimate = iteration > 0;
+//        const float avgVariance = etracer.imageStatistics.squareError().avg();
+//        finalImage.add(
+//            &rawEstimate, spp,
+//            isPretraining ? (
+//                hasVarianceEstimate ? etracer.imageStatistics.squareError().avg() : 0)
+//            : 1);
+        finalImage.add(&rawEstimate, spp);
 
         if (finalImage.hasData())
             finalImage.develop(&etracer.imageEstimate);

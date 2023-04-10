@@ -23,9 +23,9 @@
 namespace EARS {
 
 /// the cost of ray tracing + direct illumination sample (in seconds)
-static constexpr float COST_NEE = 7e-6;
+static constexpr float COST_NEE = 0.3e-7;
 /// the cost of ray tracing + BSDF/camera sample (in seconds)
-static constexpr float COST_BSDF = 7e-6;
+static constexpr float COST_BSDF = 0.3e-7;
 
 class Octtree {
 public:
@@ -287,6 +287,16 @@ struct RRSMethod {
         useAbsoluteThroughput = true;
     }
 
+    static RRSMethod None() {
+        RRSMethod rrs;
+        rrs.technique = ENone;
+        rrs.splittingMin = 1;
+        rrs.splittingMax = 1;
+        rrs.rrDepth = 1;
+        rrs.useAbsoluteThroughput = true;
+        return rrs;
+    }
+
     static RRSMethod EARS() {
         /// parse parameters
         RRSMethod rrs;
@@ -357,7 +367,7 @@ struct RRSMethod {
             /// "Adjoint-driven Russian Roulette and Splitting"
             const Vec3f LiEstimate = samplingNode->lrEstimate;
             if (bsdfHasSmoothComponent && LiEstimate.max() > 0) {
-                return clamp(weightWindow((throughput * LiEstimate).avg()));
+                return clamp(weightWindow((throughput / LiEstimate).avg()));
             } else {
                 return clamp(1);
             }
@@ -637,6 +647,8 @@ struct ImageStatistics {
     void init() {
         m_lastStats.cost = 0.0f;
         m_lastStats.squareError = Vec3f(0.0f);
+        m_iterSpp = 0;
+        m_totalSpp = 0;
     }
 
     void setOutlierRejectionCount(int count) {
@@ -675,26 +687,30 @@ struct ImageStatistics {
 
         float earsFactorNoReject = std::sqrt(avgNoReject.cost / avgNoReject.secondMoment.avg());
 
-//        Log(EInfo, "Average path count:  %.3f", m_primarySamples > 0 ? m_depthWeight / m_primarySamples : 0);
-//        Log(EInfo, "Average path length: %.3f", m_depthWeight > 0 ? m_depthAcc / m_depthWeight : 0);
-//        Log(EInfo, "Average primary split: %.3f", m_primarySamples > 0 ? m_primarySplit / m_primarySamples : 0);
-//        Log(EInfo, "Statistics:\n"
-//                   "  (values in brackets are without outlier rejection)\n"
-//                   "  Estimated Cost    = %.3e (%.3e)\n"
-//                   "  Actual Cost       = %.3e (  n. a.  )\n"
-//                   "  Variance per SPP  = %.3e (%.3e)\n"
-//                   "  Est. Cost per SPP = %.3e (%.3e)\n"
-//                   "  Est. Efficiency   = %.3e (%.3e)\n"
-//                   "  Act. Efficiency   = %.3e (%.3e)\n"
-//                   "  EARS multiplier   = %.3e (%.3e)\n",
-//            avg.cost * weight, avgNoReject.cost * weight,
-//            actualTotalCost,
-//            squareError().average(), avgNoReject.secondMoment.average(),
-//            cost(), avgNoReject.cost,
-//            efficiency(), 1 / (avgNoReject.cost * avgNoReject.secondMoment.average()),
-//            1 / (actualTotalCost / weight * squareError().average()), 1 / (actualTotalCost / weight * avgNoReject.secondMoment.average()),
-//            earsFactor(), earsFactorNoReject
-//        );
+        printf("Average path count:  %g\n", m_primarySamples > 0 ? m_depthWeight / m_primarySamples : 0);
+        printf("Average path length: %g\n", m_depthWeight > 0 ? m_depthAcc / m_depthWeight : 0);
+        printf("Average primary split: %g\n", m_primarySamples > 0 ? m_primarySplit / m_primarySamples : 0);
+        printf("Statistics:\n"
+                   "  (values in brackets are without outlier rejection)\n"
+                   "  Estimated Cost    = %g (%.3e)\n"
+                   "  Actual Cost       = %g (  n. a.  )\n"
+                   "  Variance per SPP  = %g (%.3e)\n"
+                   "  Est. Cost per SPP = %g (%.3e)\n"
+                   "  Est. Efficiency   = %g (%.3e)\n"
+                   "  Act. Efficiency   = %g (%.3e)\n"
+                   "  EARS multiplier   = %g (%.3e)\n"
+                   "  Iteration SPP     = %d\n"
+                   "  Total SPP         = %d\n"
+                   "  Image EARS Factor = %g\n"
+                   "  Average variance  = %g\n",
+            avg.cost * weight, avgNoReject.cost * weight,
+            actualTotalCost,
+            squareError().avg(), avgNoReject.secondMoment.avg(),
+            cost(), avgNoReject.cost,
+            efficiency(), 1 / (avgNoReject.cost * avgNoReject.secondMoment.avg()),
+            1 / (actualTotalCost / weight * squareError().avg()), 1 / (actualTotalCost / weight * avgNoReject.secondMoment.avg()),
+            earsFactor(), earsFactorNoReject, m_iterSpp, m_totalSpp, earsFactor(), squareError().avg()
+        );
 
         m_depthAcc = 0;
         m_depthWeight = 0;
@@ -721,6 +737,9 @@ struct ImageStatistics {
         return m_average.outlierLowerBound();
     }
 
+public:
+    int m_iterSpp;
+    int m_totalSpp;
 private:
     OutlierRejectedAverage m_average;
     float m_depthAcc{0.f};
@@ -753,34 +772,39 @@ struct WeightedBitmapAccumulator {
         }
 
         const Vec2i size = film->size();
-
-        if (m_scrap == nullptr) {
-            m_scrap = new Film(size.x(), size.y());
-        }
-        for (int i = 0; i < film->buffer.size(); i++) {
-            m_scrap->buffer[i] = film->buffer[i];
-        }
-
+//
+//        if (m_scrap == nullptr) {
+//            m_scrap = new Film(size.x(), size.y());
+//        }
+//        for (int i = 0; i < film->buffer.size(); i++) {
+//            m_scrap->buffer[i] = film->buffer[i];
+//        }
+//
         if (!m_bitmap) {
             m_bitmap = new Film(size.x(), size.y());
         }
-
-        if (avgVariance > 0 && m_weight == 0 && m_spp > 0) {
-            /// reweight previous frames that had unknown variance with our current variance estimate
-            const float reweight = 1 / avgVariance;
-            for (auto &v : m_bitmap->buffer) {
-                v *= reweight;
-            }
-            m_weight += m_spp * reweight;
+        for (int i = 0; i < film->buffer.size(); i++) {
+            m_bitmap->buffer[i] += film->buffer[i];
         }
-
-        const float weight = avgVariance > 0 ? spp / avgVariance : spp;
-        for (int i = 0; i < m_bitmap->buffer.size(); i++) {
-            m_bitmap->buffer[i] += m_scrap->buffer[i] * weight;
-        }
-
-        m_weight += avgVariance > 0 ? weight : 0;
         m_spp += spp;
+        m_weight = m_spp;
+//
+//        if (avgVariance > 0 && m_weight == 0 && m_spp > 0) {
+//            /// reweight previous frames that had unknown variance with our current variance estimate
+//            const float reweight = 1 / avgVariance;
+//            for (auto &v : m_bitmap->buffer) {
+//                v *= reweight;
+//            }
+//            m_weight += m_spp * reweight;
+//        }
+//
+//        const float weight = avgVariance > 0 ? spp / avgVariance : spp;
+//        for (int i = 0; i < m_bitmap->buffer.size(); i++) {
+//            m_bitmap->buffer[i] += m_scrap->buffer[i] * weight;
+//        }
+//
+//        m_weight += avgVariance > 0 ? weight : 0;
+//        m_spp += spp;
     }
 
     void develop(Film* dest) const {
@@ -789,12 +813,16 @@ struct WeightedBitmapAccumulator {
             return;
         }
 
-        const Vec2i size = m_bitmap->size();
-
-        const float weight = m_weight == 0 ? m_spp : m_weight;
         for (int i = 0; i < dest->buffer.size(); i++) {
-            dest->buffer[i] = weight > 0 ? m_bitmap->buffer[i] / weight : Vec3f(0.0f);
+            dest->buffer[i] = m_bitmap->buffer[i] / m_weight;
         }
+
+//        const Vec2i size = m_bitmap->size();
+//
+//        const float weight = m_weight == 0 ? m_spp : m_weight;
+//        for (int i = 0; i < dest->buffer.size(); i++) {
+//            dest->buffer[i] = weight > 0 ? m_bitmap->buffer[i] / weight : Vec3f(0.0f);
+//        }
     }
 
     //void develop(const fs::path& path) const {

@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
     Renderer renderer;
     renderer.loadTungstenJSON(argv[1]);
     renderer.render();
+    return 0;
 
     GLFWwindow* window;
     GLuint vertex_buffer, vertex_shader, fragment_shader, program;

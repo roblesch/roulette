@@ -37,7 +37,7 @@ public:
     }
 
     void add(int px, Vec3f v) {
-        buffer[px] = v;
+        buffer[px] += v;
     }
 
     void add(Vec2i px, Vec3f v) {

@@ -67,6 +67,9 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
     float lrSumCosts = 0.0f;
 
     const int numSamples = int(splittingFactor + sampler.next1D());
+    output.numSamples = numSamples;
+    if (output.numSamples > 1)
+        output.numSamples = numSamples;
     for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
         Vec3f irradianceEstimate(0.0f);
         Vec3f LrEstimate(0.0f);
@@ -220,7 +223,10 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
         output.cost
     };
 
-    imageStatistics += blockStatistics;
-    imageStatistics.splatDepthAcc(output.depthAcc, output.depthWeight, output.numSamples, 1);
+    depthAcc += output.depthAcc;
+    depthWeight += output.depthWeight;
+    primarySplit += output.numSamples;
+    samplesTaken += 1;
+
     return output.totalContribution();
 }
