@@ -1,4 +1,5 @@
 #include "tracer.h"
+#include <chrono>
 
 /**
  * EARS.h
@@ -8,6 +9,12 @@
  * https://github.com/iRath96/ears/blob/master/mitsuba/src/integrators/path/recursive_path.cpp
  * https://github.com/iRath96/ears/blob/master/LICENSE
  */
+
+static float computeElapsedSeconds(std::chrono::steady_clock::time_point start) {
+    auto current = std::chrono::steady_clock::now();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(current - start);
+    return (float)ms.count() / 1000;
+}
 
 EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenerator& sampler) {
     EARSTracer::LiOutput output;
@@ -23,7 +30,7 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
 
     bool hit = scene->intersect(input.ray, iinfo, idata);
     its = makeLocalScatterEvent(iinfo, idata, input.ray, &sampler);
-    output.cost += EARS::COST_BSDF;
+    output.cost += COST_BSDF;
 
     if (!hit) {
         output.markAsLeaf(input.depth);
@@ -60,6 +67,9 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
     float lrSumCosts = 0.0f;
 
     const int numSamples = int(splittingFactor + sampler.next1D());
+    output.numSamples = numSamples;
+    if (output.numSamples > 1)
+        output.numSamples = numSamples;
     for (int sampleIndex = 0; sampleIndex < numSamples; sampleIndex++) {
         Vec3f irradianceEstimate(0.0f);
         Vec3f LrEstimate(0.0f);
@@ -68,8 +78,7 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
         /* ==================================================================== */
         /*                     Direct illumination sampling                     */
         /* ==================================================================== */
-
-        LrCost += EARS::COST_NEE;
+        LrCost += COST_NEE;
         LightSample lightsample;
         auto light = scene->primitives.at("Light");
 
@@ -116,15 +125,14 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
                 break;
             bsdfWeight = itsNested.weight;
             bsdfPdf = itsNested.pdf;
-            // TODO: Maybe transform to world
-            float absCosTheta = std::abs(itsNested.wo.z());
 
             Vec3f wo = itsNested.frame.toGlobal(itsNested.wo);
+            float absCosTheta = std::abs(wo.z());
             bool hitEmitter = false;
             Vec3f value;
 
             rayNested = Ray(itsNested.data->p, wo);
-            LrCost += EARS::COST_BSDF;
+            LrCost += COST_BSDF;
             if (scene->intersect(rayNested, iinfoNested, idataNested)) {
                 itsNested = makeLocalScatterEvent(iinfoNested, idataNested, rayNested, &sampler);
                 if (idataNested.primitive->emissive() && !iinfoNested.backface || idataNested.backSide) {
@@ -167,12 +175,14 @@ EARSTracer::LiOutput EARSTracer::Li(EARSTracer::LiInput &input, PathSampleGenera
         lrSumCosts += LrCost;
     }
 
-    trainingNode->splatLrEstimate(
-        lrSum,
-        lrSumSquares,
-        lrSumCosts,
-        numSamples
-    );
+    if (numSamples > 0) {
+        trainingNode->splatLrEstimate(
+            lrSum,
+            lrSumSquares,
+            lrSumCosts,
+            numSamples
+        );
+    }
 
     if (output.depthAcc == 0) {
         output.markAsLeaf(input.depth);
@@ -186,6 +196,10 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     const Vec3f nanEnvDirColor = Vec3f(0.0f);
     const Vec3f nanBsdfColor = Vec3f(0.0f);
 
+    const Vec3f pixelEstimate = imageEstimate.get(px);
+    const Vec3f metricNorm = rrs.useAbsoluteThroughput ? Vec3f(1.0f) : pixelEstimate + Vec3f(1e-2);
+    const Vec3f expectedContribution = pixelEstimate / metricNorm;
+
     Camera cam = scene->camera;
     PositionSample point;
     DirectionSample direction;
@@ -195,14 +209,13 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
     sampler.advancePath();
 
     Ray ray(point.p, direction.d);
-    Vec3f throughput(1.0f);
+    Vec3f weight(1.0f);
+    if (!rrs.useAbsoluteThroughput)
+        weight /= (pixelEstimate + Vec3f(1e-2));
     int bounce = 0;
-    EARSTracer::LiInput input {throughput, ray, bounce, true};
+    EARSTracer::LiInput input{weight, ray, bounce, true};
     EARSTracer::LiOutput output = Li(input, sampler);
 
-    const Vec3f pixelEstimate = imageEstimate.get(px);
-    const Vec3f metricNorm = rrs.useAbsoluteThroughput ? Vec3f(1.0f) : pixelEstimate + Vec3f(1e-2);
-    const Vec3f expectedContribution = pixelEstimate / metricNorm;
     const Vec3f pixelContribution = (Vec3f(1.0f) / metricNorm) * output.totalContribution();
     const Vec3f diff = pixelContribution - expectedContribution;
 
@@ -212,7 +225,36 @@ Vec3f EARSTracer::trace(const Vec2i& px, PathSampleGenerator& sampler) {
         output.cost
     };
 
-    imageStatistics += blockStatistics;
-    imageStatistics.splatDepthAcc(output.depthAcc, output.depthWeight, output.numSamples, 1);
+    depthAcc += output.depthAcc;
+    depthWeight += output.depthWeight;
+    primarySplit += output.numSamples;
+    samplesTaken += 1;
+
     return output.totalContribution();
+}
+
+Vec3f EARSTracer::LrEstimate(const Vec2i& px, PathSampleGenerator& sampler) {
+    Camera cam = scene->camera;
+    PositionSample point;
+    DirectionSample direction;
+
+    cam.samplePosition(point, sampler);
+    cam.sampleDirection(px, direction, sampler);
+    sampler.advancePath();
+
+    Ray ray(point.p, direction.d);
+    Intersection iinfo;
+    IntersectionData idata;
+    scene->intersect(ray, iinfo, idata);
+
+    const int histogramBinIndex = mapOutgoingDirectionToHistogramBin(ray.d());
+    const EARS::Octtree::SamplingNode* samplingNode = nullptr;
+    EARS::Octtree::TrainingNode* trainingNode = nullptr;
+    cache.lookup(mapPointToUnitCube(idata.p), histogramBinIndex, samplingNode, trainingNode);
+    if (samplingNode == nullptr) {
+        return {};
+    }
+    else {
+        return samplingNode->lrEstimate;
+    }
 }

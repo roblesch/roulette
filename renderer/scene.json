@@ -68,6 +68,15 @@
       "name": "Light",
       "albedo": 1,
       "type": "null"
+    },
+    {
+      "name": "Panel",
+      "albedo": [
+        1,
+        1,
+        1
+      ],
+      "type": "lambert"
     }
   ],
   "primitives": [
@@ -221,9 +230,9 @@
           -0.03
         ],
         "scale": [
-          0.47,
-          0.1786,
-          0.38
+          0.5,
+          1,
+          0.5
         ],
         "rotation": [
           0,
@@ -238,13 +247,34 @@
       ],
       "type": "quad",
       "bsdf": "Light"
+    },
+    {
+      "transform": {
+        "position": [
+          0.5,
+          1.5,
+          0
+        ],
+        "scale": [
+          1,
+          4,
+          2
+        ],
+        "rotation": [
+          0,
+          180,
+          180
+        ]
+      },
+      "type": "quad",
+      "bsdf": "Panel"
     }
   ],
   "camera": {
     "tonemap": "filmic",
     "resolution": [
-      400,
-      400 
+      1024,
+      1024 
     ],
     "reconstruction_filter": "tent",
     "transform": {
