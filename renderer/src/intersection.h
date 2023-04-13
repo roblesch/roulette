@@ -1,3 +1,6 @@
+/* Adapted from Benedikt Bitterli's Tungsten
+ * https://github.com/tunabrain/tungsten */
+
 #ifndef INTERSECTION_H
 #define INTERSECTION_H
 

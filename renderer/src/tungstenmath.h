@@ -1,13 +1,5 @@
-/* 
-This file is a compilation of mathematical primitives and util functions from
-Benedikt Bitterli's Tungsten renderer - https://github.com/tunabrain/tungsten
-It combines selections from the Mat4, Vec and Math Util implementations.
-
-Some modifications have been made - mostly to satisfy clang-tidy's modernize
-suggestions. Functionally, they behave as offered.
-
-See License.txt for tungsten's license.
-*/
+/* Adapted from Benedikt Bitterli's Tungsten
+ * https://github.com/tunabrain/tungsten */
 
 #ifndef TUNGSTENMATH_H
 #define TUNGSTENMATH_H

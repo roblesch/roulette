@@ -4,7 +4,6 @@
 #include <cmath>
 
 #include "usings.h"
-
 #include "sampler.h"
 
 struct PositionSample {

@@ -1,3 +1,6 @@
+/* Adapted from Benedikt Bitterli's Tungsten
+ * https://github.com/tunabrain/tungsten */
+
 #ifndef SAMPLER_H
 #define SAMPLER_H
 
