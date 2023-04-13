@@ -1,3 +1,6 @@
+/* Adapted From Rath et. al.'s EARS
+ * https://github.com/irath96/ears */
+
 #ifndef IMAGESTATISTICS_H
 #define IMAGESTATISTICS_H
 

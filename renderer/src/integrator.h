@@ -40,6 +40,8 @@ public:
     void render(const Scene& scene, FrameBuffer& frame) override;
 };
 
+/* Adapted From Rath et. al.'s EARS
+ * https://github.com/irath96/ears */
 class EARSIntegrator : public Integrator {
 public:
     EARSIntegrator() {

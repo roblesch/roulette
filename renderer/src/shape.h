@@ -1,3 +1,6 @@
+/* Adapted from Benedikt Bitterli's Tungsten
+ * https://github.com/tunabrain/tungsten */
+
 #ifndef SHAPE_H
 #define SHAPE_H
 
@@ -121,7 +124,6 @@ public:
 public:
     Vec3f base;
     Vec3f edge0, edge1;
-    //TangentFrame _frame;
     Vec2f invUvSq;
     float area;
     float invArea;

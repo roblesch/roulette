@@ -1,14 +1,9 @@
-#include "tracer.h"
+/* Adapted From Rath et. al.'s EARS
+ * https://github.com/irath96/ears */
+
 #include <chrono>
 
-/**
- * EARS.h
- *
- * Adapted from Alexander Rath's original implementation
- * https://graphics.cg.uni-saarland.de/publications/rath-sig2022.html
- * https://github.com/iRath96/ears/blob/master/mitsuba/src/integrators/path/recursive_path.cpp
- * https://github.com/iRath96/ears/blob/master/LICENSE
- */
+#include "tracer.h"
 
 static float computeElapsedSeconds(std::chrono::steady_clock::time_point start) {
     auto current = std::chrono::steady_clock::now();

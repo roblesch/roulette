@@ -1,3 +1,6 @@
+/* Adapted From Rath et. al.'s EARS
+ * https://github.com/irath96/ears */
+
 #ifndef OUTLIERREJECTEDAVERAGE_H
 #define OUTLIERREJECTEDAVERAGE_H
 

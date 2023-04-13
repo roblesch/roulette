@@ -46,6 +46,8 @@ public:
     const Scene* scene;
 };
 
+/* Adapted from Benedikt Bitterli's Tungsten
+ * https://github.com/tunabrain/tungsten */
 class PathTracer : public Tracer {
 public:
     PathTracer(const Scene& scene) : scene(&scene) {};
@@ -82,12 +84,11 @@ public:
     int maxBounces = 64;
 };
 
+/* Adapted From Rath et. al.'s EARS
+ * https://github.com/irath96/ears */
 class EARSTracer : public PathTracer {
 private:
-    /// the cost of ray tracing + direct illumination sample (in seconds)
     static constexpr float COST_NEE  = 0.3e-7;
-
-    /// the cost of ray tracing + BSDF/camera sample (in seconds)
     static constexpr float COST_BSDF = 0.3e-7;
 
     struct LiInput {

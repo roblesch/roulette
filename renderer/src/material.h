@@ -1,3 +1,6 @@
+/* Adapted from Benedikt Bitterli's Tungsten
+ * https://github.com/tunabrain/tungsten */
+
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
