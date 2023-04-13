@@ -38,6 +38,6 @@ https://github.com/tunabrain/tungsten
 
 https://github.com/mitsuba-renderer/mitsuba3
 
-Benedikt Bitterli's [Tungsten Renderer](https://github.com/tunabrain/tungsten) is the foundation for this project's implementation of path tracing. His implementation of forward path tracing is reused here directly where possible.
+Benedikt Bitterli's [Tungsten Renderer](https://github.com/tunabrain/tungsten) is the foundation for this project's implementation of path tracing. His implementations of forward path tracing and geometric primitives are used with some modification.
 
-Alexander Rath's implementation of ADRRS and EARS is used as provided [in his repository](https://github.com/irath96/ears).
+Alexander Rath's [implementation of ADRRS and EARS](https://github.com/irath96/ears) is used as provided.
