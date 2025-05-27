@@ -14,6 +14,8 @@ This project has external dependencies. Clone submodules before building.
 $ git submodule update --init --recursive
 ```
 
+This project requires the [Intel oneAPI Rendering Toolkit.](https://www.intel.com/content/www/us/en/docs/oneapi-rendering-toolkit/get-started-guide-windows/2024-1/configure-your-system.html)
+
 ## Blog Posts
 
 Development notes are shared [on my blog](https://blog.roblesch.page/blog/2022/11/17/directed-research.html).
